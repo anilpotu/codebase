@@ -1,0 +1,26 @@
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: mesh-telemetry
+  namespace: grpc-enterprise
+spec:
+  tracing:
+    - providers:
+        - name: jaeger
+      randomSamplingPercentage: 100.0
+      customTags:
+        environment:
+          literal:
+            value: "production"
+  metrics:
+    - providers:
+        - name: prometheus
+      overrides:
+        - match:
+            metric: ALL_METRICS
+            mode: CLIENT_AND_SERVER
+          tagOverrides:
+            response_code:
+              operation: UPSERT
+            grpc_response_status:
+              operation: UPSERT

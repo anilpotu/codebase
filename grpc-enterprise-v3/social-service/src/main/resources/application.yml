@@ -1,0 +1,81 @@
+spring:
+  application:
+    name: social-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/socialdb
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+
+server:
+  port: 8083
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,env,loggers,circuitbreakers
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      probes:
+        enabled: true
+    info:
+      enabled: true
+    loggers:
+      enabled: true
+  info:
+    env:
+      enabled: true
+    build:
+      enabled: true
+  health:
+    circuitbreakers:
+      enabled: true
+    db:
+      enabled: true
+    diskspace:
+      enabled: true
+
+info:
+  app:
+    name: social-service
+    version: 3.0.0
+    description: User Social Information REST Service
+
+logging:
+  level:
+    root: INFO
+    com.enterprise.social: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: WARN
+    org.flywaydb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] %-5level %logger{36} - %msg%n"
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      socialService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+
+jwt:
+  secret: enterpriseGrpcSecretKeyForJWT256bitMinimumLength!
+  expiration: 86400000

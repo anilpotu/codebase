@@ -1,0 +1,27 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: grpc-enterprise-v3
+  namespace: grpc-enterprise
+spec:
+  hosts:
+    - "grpc.enterprise.example.com"
+    - "grpc-enterprise-v3"
+  gateways:
+    - enterprise-gateway
+    - mesh
+  http:
+    - match:
+        - port: 9090
+      route:
+        - destination:
+            host: grpc-enterprise-v3
+            port:
+              number: 9090
+            subset: v1
+          weight: 100
+      timeout: 10s
+      retries:
+        attempts: 3
+        perTryTimeout: 3s
+        retryOn: unavailable,resource-exhausted,deadline-exceeded

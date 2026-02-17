@@ -1,0 +1,255 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION       = 'us-east-1'
+        ECR_REGISTRY     = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        IMAGE_TAG        = "build-${env.BUILD_NUMBER}"
+        EKS_CLUSTER_NAME = 'grpc-enterprise-v3-eks'
+        TERRAFORM_DIR    = 'terraform'
+        K8S_NAMESPACE    = 'grpc-enterprise'
+    }
+
+    options {
+        timeout(time: 60, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        timestamps()
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build & Test') {
+            steps {
+                sh 'mvn clean verify -B'
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        stage('Code Quality') {
+            parallel {
+                stage('OWASP Dependency Check') {
+                    steps {
+                        sh 'mvn org.owasp:dependency-check-maven:check -B || true'
+                    }
+                }
+                stage('SpotBugs') {
+                    steps {
+                        sh 'mvn com.github.spotbugs:spotbugs-maven-plugin:check -B || true'
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            parallel {
+                stage('Build user-grpc-service') {
+                    steps {
+                        sh "docker build -f user-grpc-service/Dockerfile -t user-grpc-service:${IMAGE_TAG} -t user-grpc-service:latest ."
+                    }
+                }
+                stage('Build financial-service') {
+                    steps {
+                        sh "docker build -f financial-service/Dockerfile -t financial-service:${IMAGE_TAG} -t financial-service:latest ."
+                    }
+                }
+                stage('Build health-service') {
+                    steps {
+                        sh "docker build -f health-service/Dockerfile -t health-service:${IMAGE_TAG} -t health-service:latest ."
+                    }
+                }
+                stage('Build social-service') {
+                    steps {
+                        sh "docker build -f social-service/Dockerfile -t social-service:${IMAGE_TAG} -t social-service:latest ."
+                    }
+                }
+            }
+        }
+
+        stage('Docker Image Scan') {
+            parallel {
+                stage('Scan user-grpc-service') {
+                    steps {
+                        sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed user-grpc-service:${IMAGE_TAG} || true"
+                    }
+                }
+                stage('Scan financial-service') {
+                    steps {
+                        sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed financial-service:${IMAGE_TAG} || true"
+                    }
+                }
+                stage('Scan health-service') {
+                    steps {
+                        sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed health-service:${IMAGE_TAG} || true"
+                    }
+                }
+                stage('Scan social-service') {
+                    steps {
+                        sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed social-service:${IMAGE_TAG} || true"
+                    }
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                    sh """
+                        aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+
+                        for SERVICE in user-grpc-service financial-service health-service social-service; do
+                            docker tag \${SERVICE}:${IMAGE_TAG} ${ECR_REGISTRY}/\${SERVICE}:${IMAGE_TAG}
+                            docker tag \${SERVICE}:latest ${ECR_REGISTRY}/\${SERVICE}:latest
+                            docker push ${ECR_REGISTRY}/\${SERVICE}:${IMAGE_TAG}
+                            docker push ${ECR_REGISTRY}/\${SERVICE}:latest
+                        done
+                    """
+                }
+            }
+        }
+
+        stage('Terraform') {
+            when {
+                branch 'main'
+            }
+            stages {
+                stage('Terraform Init') {
+                    steps {
+                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                            dir("${TERRAFORM_DIR}") {
+                                sh 'terraform init -input=false'
+                            }
+                        }
+                    }
+                }
+
+                stage('Terraform Validate') {
+                    steps {
+                        dir("${TERRAFORM_DIR}") {
+                            sh 'terraform validate'
+                        }
+                    }
+                }
+
+                stage('Terraform Plan') {
+                    steps {
+                        withCredentials([
+                            [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials'],
+                            string(credentialsId: 'db-password', variable: 'TF_VAR_db_password')
+                        ]) {
+                            dir("${TERRAFORM_DIR}") {
+                                sh 'terraform plan -out=tfplan -input=false'
+                            }
+                        }
+                    }
+                }
+
+                stage('Terraform Apply') {
+                    input {
+                        message 'Review the Terraform plan. Proceed with apply?'
+                        ok 'Apply'
+                    }
+                    steps {
+                        withCredentials([
+                            [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials'],
+                            string(credentialsId: 'db-password', variable: 'TF_VAR_db_password')
+                        ]) {
+                            dir("${TERRAFORM_DIR}") {
+                                sh 'terraform apply -auto-approve tfplan'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to EKS') {
+            when {
+                branch 'main'
+            }
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials'],
+                    string(credentialsId: 'db-password', variable: 'DB_PASSWORD')
+                ]) {
+                    sh """
+                        aws eks update-kubeconfig --name ${EKS_CLUSTER_NAME} --region ${AWS_REGION}
+
+                        kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+
+                        for SERVICE in grpc-enterprise financial-service health-service social-service; do
+                            kubectl create secret generic \${SERVICE}-db-secret \
+                                --namespace ${K8S_NAMESPACE} \
+                                --from-literal=username=grpcadmin \
+                                --from-literal=password=\${DB_PASSWORD} \
+                                --dry-run=client -o yaml | kubectl apply -f -
+                        done
+
+                        RDS_ENDPOINT=\$(cd ${TERRAFORM_DIR} && terraform output -raw rds_endpoint)
+
+                        for MANIFEST in k8s/*.yaml; do
+                            sed -i "s|user-grpc-service:latest|${ECR_REGISTRY}/user-grpc-service:${IMAGE_TAG}|g" \${MANIFEST}
+                            sed -i "s|financial-service:latest|${ECR_REGISTRY}/financial-service:${IMAGE_TAG}|g" \${MANIFEST}
+                            sed -i "s|health-service:latest|${ECR_REGISTRY}/health-service:${IMAGE_TAG}|g" \${MANIFEST}
+                            sed -i "s|social-service:latest|${ECR_REGISTRY}/social-service:${IMAGE_TAG}|g" \${MANIFEST}
+                            sed -i "s|postgres-service:5432|\\${RDS_ENDPOINT}|g" \${MANIFEST}
+                        done
+
+                        kubectl apply -f k8s/ --namespace ${K8S_NAMESPACE}
+
+                        for DEPLOY in grpc-enterprise-v3 financial-service health-service social-service; do
+                            kubectl rollout status deployment/\${DEPLOY} \
+                                --namespace ${K8S_NAMESPACE} \
+                                --timeout=300s || true
+                        done
+                    """
+                }
+            }
+        }
+
+        stage('Smoke Test') {
+            when {
+                branch 'main'
+            }
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
+                    sh """
+                        for SERVICE in grpc-enterprise-v3 financial-service health-service social-service; do
+                            echo "Checking \${SERVICE}..."
+                            kubectl wait --for=condition=ready pod \
+                                -l app=\${SERVICE} \
+                                --namespace ${K8S_NAMESPACE} \
+                                --timeout=120s || echo "\${SERVICE} pods not ready"
+                        done
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline completed successfully. All services built and deployed with tag: ${IMAGE_TAG}"
+        }
+        failure {
+            echo "Pipeline failed. Check logs for details."
+        }
+        always {
+            sh '''
+                for SERVICE in user-grpc-service financial-service health-service social-service; do
+                    docker rmi ${SERVICE}:${IMAGE_TAG} ${SERVICE}:latest || true
+                done
+            '''
+            cleanWs()
+        }
+    }
+}

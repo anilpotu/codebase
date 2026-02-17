@@ -1,0 +1,33 @@
+# JWT RequestAuthentication for all services
+# Validates JWT tokens at the Istio mesh level (defense-in-depth)
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: jwt-authentication
+  namespace: grpc-enterprise
+spec:
+  jwtRules:
+    - issuer: "grpc-enterprise-v3"
+      forwardOriginalToken: true
+      outputPayloadToHeader: "x-jwt-payload"
+---
+# Require valid JWT for all non-public endpoints
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: require-jwt
+  namespace: grpc-enterprise
+spec:
+  action: DENY
+  rules:
+    - from:
+        - source:
+            notRequestPrincipals: ["*"]
+      to:
+        - operation:
+            notPaths:
+              - "/api/auth/*"
+              - "/actuator/*"
+              - "/swagger-ui/*"
+              - "/v3/api-docs/*"
+              - "/webjars/*"

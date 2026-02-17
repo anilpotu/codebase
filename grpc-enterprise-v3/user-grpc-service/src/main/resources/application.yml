@@ -1,0 +1,31 @@
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/grpcdb
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+grpc:
+  server:
+    port: 9090
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      userService:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+
+jwt:
+  secret: enterpriseGrpcSecretKeyForJWT256bitMinimumLength!
+  expiration: 86400000

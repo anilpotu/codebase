@@ -1,0 +1,179 @@
+# Default deny-all policy for the namespace
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-all
+  namespace: grpc-enterprise
+spec:
+  {}
+---
+# Allow ingress gateway to reach all services
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-ingress-gateway
+  namespace: grpc-enterprise
+spec:
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"
+---
+# Allow actuator health probe endpoints
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-health-probes
+  namespace: grpc-enterprise
+spec:
+  action: ALLOW
+  rules:
+    - to:
+        - operation:
+            paths: ["/actuator/health*"]
+            methods: ["GET"]
+---
+# Financial service access control
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-financial-service
+  namespace: grpc-enterprise
+spec:
+  selector:
+    matchLabels:
+      app: financial-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"
+      to:
+        - operation:
+            ports: ["8081"]
+            paths: ["/api/accounts*", "/api/transactions*"]
+            methods: ["GET", "POST", "PUT", "DELETE"]
+    - from:
+        - source:
+            namespaces: ["grpc-enterprise"]
+      to:
+        - operation:
+            ports: ["8081"]
+            paths: ["/api/accounts*", "/api/transactions*"]
+---
+# Health service access control
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-health-service
+  namespace: grpc-enterprise
+spec:
+  selector:
+    matchLabels:
+      app: health-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"
+      to:
+        - operation:
+            ports: ["8082"]
+            paths: ["/api/health-records*", "/api/vitals*"]
+            methods: ["GET", "POST", "PUT", "DELETE"]
+    - from:
+        - source:
+            namespaces: ["grpc-enterprise"]
+      to:
+        - operation:
+            ports: ["8082"]
+            paths: ["/api/health-records*", "/api/vitals*"]
+---
+# Social service access control
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-social-service
+  namespace: grpc-enterprise
+spec:
+  selector:
+    matchLabels:
+      app: social-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"
+      to:
+        - operation:
+            ports: ["8083"]
+            paths: ["/api/profiles*", "/api/posts*", "/api/connections*"]
+            methods: ["GET", "POST", "PUT", "DELETE"]
+    - from:
+        - source:
+            namespaces: ["grpc-enterprise"]
+      to:
+        - operation:
+            ports: ["8083"]
+            paths: ["/api/profiles*", "/api/posts*", "/api/connections*"]
+---
+# User service REST + gRPC access control
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-grpc-user-service
+  namespace: grpc-enterprise
+spec:
+  selector:
+    matchLabels:
+      app: grpc-enterprise-v3
+  action: ALLOW
+  rules:
+    # gRPC endpoints
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"
+      to:
+        - operation:
+            ports: ["9090"]
+            paths: ["/UserService/*"]
+    - from:
+        - source:
+            namespaces: ["grpc-enterprise"]
+      to:
+        - operation:
+            ports: ["9090"]
+            paths: ["/UserService/*"]
+    # Public auth endpoints (register/login)
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"
+      to:
+        - operation:
+            ports: ["8080"]
+            paths: ["/api/auth/*"]
+            methods: ["POST"]
+    # REST user endpoints (authenticated)
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"
+      to:
+        - operation:
+            ports: ["8080"]
+            paths: ["/api/users*"]
+            methods: ["GET", "POST", "PUT", "DELETE"]
+    - from:
+        - source:
+            namespaces: ["grpc-enterprise"]
+      to:
+        - operation:
+            ports: ["8080"]
+            paths: ["/api/users*"]
