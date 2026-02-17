@@ -1,0 +1,163 @@
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-all
+  namespace: secure-distributed
+spec:
+  {}
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-ingress-gateway
+  namespace: secure-distributed
+spec:
+  selector:
+    matchLabels:
+      app: api-gateway
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-health-probes
+  namespace: secure-distributed
+spec:
+  action: ALLOW
+  rules:
+    - to:
+        - operation:
+            methods:
+              - GET
+            paths:
+              - /actuator/health
+              - /actuator/health/*
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-api-gateway-to-services
+  namespace: secure-distributed
+spec:
+  selector:
+    matchLabels:
+      app: auth-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/secure-distributed/sa/api-gateway
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-api-gateway-to-user-service
+  namespace: secure-distributed
+spec:
+  selector:
+    matchLabels:
+      app: user-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/secure-distributed/sa/api-gateway
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-api-gateway-to-order-service
+  namespace: secure-distributed
+spec:
+  selector:
+    matchLabels:
+      app: order-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/secure-distributed/sa/api-gateway
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-api-gateway-to-product-service
+  namespace: secure-distributed
+spec:
+  selector:
+    matchLabels:
+      app: product-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/secure-distributed/sa/api-gateway
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-services-to-config-server
+  namespace: secure-distributed
+spec:
+  selector:
+    matchLabels:
+      app: config-server
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/secure-distributed/sa/api-gateway
+              - cluster.local/ns/secure-distributed/sa/auth-service
+              - cluster.local/ns/secure-distributed/sa/user-service
+              - cluster.local/ns/secure-distributed/sa/order-service
+              - cluster.local/ns/secure-distributed/sa/product-service
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-services-to-eureka-server
+  namespace: secure-distributed
+spec:
+  selector:
+    matchLabels:
+      app: eureka-server
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/secure-distributed/sa/api-gateway
+              - cluster.local/ns/secure-distributed/sa/auth-service
+              - cluster.local/ns/secure-distributed/sa/user-service
+              - cluster.local/ns/secure-distributed/sa/order-service
+              - cluster.local/ns/secure-distributed/sa/product-service
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-services-to-redis
+  namespace: secure-distributed
+spec:
+  selector:
+    matchLabels:
+      app: redis
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/secure-distributed/sa/api-gateway
+              - cluster.local/ns/secure-distributed/sa/auth-service
+              - cluster.local/ns/secure-distributed/sa/user-service
+              - cluster.local/ns/secure-distributed/sa/order-service
+              - cluster.local/ns/secure-distributed/sa/product-service

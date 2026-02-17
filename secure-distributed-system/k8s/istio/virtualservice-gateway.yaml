@@ -1,0 +1,59 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: api-gateway-vs
+  namespace: secure-distributed
+spec:
+  hosts:
+    - api.secure-distributed.example.com
+  gateways:
+    - secure-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /api/auth
+      route:
+        - destination:
+            host: api-gateway
+            port:
+              number: 8000
+      timeout: 30s
+      retries:
+        attempts: 3
+        retryOn: 5xx,gateway-error,connect-failure
+    - match:
+        - uri:
+            prefix: /api/users
+      route:
+        - destination:
+            host: api-gateway
+            port:
+              number: 8000
+      timeout: 30s
+      retries:
+        attempts: 3
+        retryOn: 5xx,gateway-error,connect-failure
+    - match:
+        - uri:
+            prefix: /api/orders
+      route:
+        - destination:
+            host: api-gateway
+            port:
+              number: 8000
+      timeout: 30s
+      retries:
+        attempts: 3
+        retryOn: 5xx,gateway-error,connect-failure
+    - match:
+        - uri:
+            prefix: /api/products
+      route:
+        - destination:
+            host: api-gateway
+            port:
+              number: 8000
+      timeout: 30s
+      retries:
+        attempts: 3
+        retryOn: 5xx,gateway-error,connect-failure

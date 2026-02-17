@@ -1,0 +1,26 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: secure-gateway
+  namespace: secure-distributed
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      hosts:
+        - api.secure-distributed.example.com
+      tls:
+        mode: SIMPLE
+        credentialName: secure-distributed-tls
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - api.secure-distributed.example.com
+      tls:
+        httpsRedirect: true

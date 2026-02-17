@@ -1,0 +1,11 @@
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: secure-distributed-telemetry
+  namespace: secure-distributed
+spec:
+  tracing:
+    - randomSamplingPercentage: 100
+  metrics:
+    - providers:
+        - name: prometheus
