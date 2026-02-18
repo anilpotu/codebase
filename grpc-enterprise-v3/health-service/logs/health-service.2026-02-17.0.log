@@ -1,0 +1,69 @@
+2026-02-17 08:03:39.653 [background-preinit] [] INFO  o.h.validator.internal.util.Version - HV000001: Hibernate Validator 6.2.5.Final
+2026-02-17 08:03:39.668 [main] [] INFO  c.e.h.c.HealthRecordControllerTest - Starting HealthRecordControllerTest using Java 1.8.0_431 on a-1mxnn8n5x5n7z with PID 17650 (started by LOKI-HQ\potua in /home/potua/Downloads/grpc-enterprise-v3/health-service)
+2026-02-17 08:03:39.669 [main] [] DEBUG c.e.h.c.HealthRecordControllerTest - Running with Spring Boot v2.7.18, Spring v5.3.31
+2026-02-17 08:03:39.669 [main] [] INFO  c.e.h.c.HealthRecordControllerTest - No active profile set, falling back to 1 default profile: "default"
+2026-02-17 08:03:40.683 [main] [] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-02-17 08:03:40.736 [main] [] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 44 ms. Found 2 JPA repository interfaces.
+2026-02-17 08:03:41.871 [main] [] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-02-17 08:03:41.928 [main] [] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 5.6.15.Final
+2026-02-17 08:03:41.976 [main] [] INFO  o.h.annotations.common.Version - HCANN000001: Hibernate Commons Annotations {5.1.2.Final}
+2026-02-17 08:03:42.106 [main] [] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2026-02-17 08:03:42.376 [main] [] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2026-02-17 08:03:42.395 [main] [] INFO  org.hibernate.dialect.Dialect - HHH000400: Using dialect: org.hibernate.dialect.H2Dialect
+2026-02-17 08:03:43.050 [main] [] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000490: Using JtaPlatform implementation: [org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform]
+2026-02-17 08:03:43.062 [main] [] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-02-17 08:03:44.432 [main] [] WARN  o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-02-17 08:03:46.284 [main] [] INFO  o.s.b.t.m.w.SpringBootMockServletContext - Initializing Spring TestDispatcherServlet ''
+2026-02-17 08:03:46.284 [main] [] INFO  o.s.t.w.s.TestDispatcherServlet - Initializing Servlet ''
+2026-02-17 08:03:46.300 [main] [] INFO  o.s.b.a.e.web.EndpointLinksResolver - Exposing 1 endpoint(s) beneath base path '/actuator'
+2026-02-17 08:03:46.336 [main] [] INFO  o.s.t.w.s.TestDispatcherServlet - Completed initialization in 51 ms
+2026-02-17 08:03:46.396 [main] [] INFO  c.e.h.c.HealthRecordControllerTest - Started HealthRecordControllerTest in 7.079 seconds (JVM running for 8.882)
+2026-02-17 08:03:46.844 [main] [] INFO  c.e.h.c.HealthRecordController - POST /api/health-records - userId=2
+2026-02-17 08:03:46.875 [main] [] INFO  c.e.health.service.HealthService - Creating/updating health record for userId=2
+2026-02-17 08:03:46.927 [main] [] INFO  c.e.health.service.HealthService - Health record saved: id=1, userId=2
+2026-02-17 08:03:46.963 [main] [] INFO  c.e.h.c.HealthRecordController - POST /api/health-records - userId=2
+2026-02-17 08:03:46.964 [main] [] INFO  c.e.health.service.HealthService - Creating/updating health record for userId=2
+2026-02-17 08:03:46.976 [main] [] INFO  c.e.health.service.HealthService - Health record saved: id=1, userId=2
+2026-02-17 08:03:47.065 [main] [] INFO  c.e.h.c.HealthRecordController - POST /api/health-records - userId=3
+2026-02-17 08:03:47.067 [main] [] INFO  c.e.health.service.HealthService - Creating/updating health record for userId=3
+2026-02-17 08:03:47.072 [main] [] INFO  c.e.health.service.HealthService - Health record saved: id=2, userId=3
+2026-02-17 08:03:47.080 [main] [] DEBUG c.e.h.c.HealthRecordController - GET /api/health-records/user/3
+2026-02-17 08:03:47.082 [main] [] DEBUG c.e.health.service.HealthService - Fetching health record for userId=3
+2026-02-17 08:03:47.105 [main] [] INFO  c.e.h.c.HealthRecordController - POST /api/health-records - userId=1
+2026-02-17 08:03:47.107 [main] [] INFO  c.e.health.service.HealthService - Creating/updating health record for userId=1
+2026-02-17 08:03:47.112 [main] [] INFO  c.e.health.service.HealthService - Health record saved: id=3, userId=1
+2026-02-17 08:03:47.131 [main] [] DEBUG c.e.h.c.HealthRecordController - GET /api/health-records/user/999
+2026-02-17 08:03:47.132 [main] [] DEBUG c.e.health.service.HealthService - Fetching health record for userId=999
+2026-02-17 08:03:47.143 [main] [] INFO  o.s.b.t.c.SpringBootTestContextBootstrapper - Neither @ContextConfiguration nor @ContextHierarchy found for test class [com.enterprise.health.controller.VitalControllerTest], using SpringBootContextLoader
+2026-02-17 08:03:47.144 [main] [] INFO  o.s.t.c.s.AbstractContextLoader - Could not detect default resource locations for test class [com.enterprise.health.controller.VitalControllerTest]: no resource found for suffixes {-context.xml, Context.groovy}.
+2026-02-17 08:03:47.144 [main] [] INFO  o.s.t.c.s.AnnotationConfigContextLoaderUtils - Could not detect default configuration classes for test class [com.enterprise.health.controller.VitalControllerTest]: VitalControllerTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-02-17 08:03:47.147 [main] [] INFO  o.s.b.t.c.SpringBootTestContextBootstrapper - Found @SpringBootConfiguration com.enterprise.health.HealthApplication for test class com.enterprise.health.controller.VitalControllerTest
+2026-02-17 08:03:47.149 [main] [] INFO  o.s.b.t.c.SpringBootTestContextBootstrapper - Loaded default TestExecutionListener class names from location [META-INF/spring.factories]: [org.springframework.boot.test.mock.mockito.MockitoTestExecutionListener, org.springframework.boot.test.mock.mockito.ResetMocksTestExecutionListener, org.springframework.boot.test.autoconfigure.restdocs.RestDocsTestExecutionListener, org.springframework.boot.test.autoconfigure.web.client.MockRestServiceServerResetTestExecutionListener, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrintOnlyOnFailureTestExecutionListener, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverTestExecutionListener, org.springframework.boot.test.autoconfigure.webservices.client.MockWebServiceServerTestExecutionListener, org.springframework.test.context.web.ServletTestExecutionListener, org.springframework.test.context.support.DirtiesContextBeforeModesTestExecutionListener, org.springframework.test.context.event.ApplicationEventsTestExecutionListener, org.springframework.test.context.support.DependencyInjectionTestExecutionListener, org.springframework.test.context.support.DirtiesContextTestExecutionListener, org.springframework.test.context.transaction.TransactionalTestExecutionListener, org.springframework.test.context.jdbc.SqlScriptsTestExecutionListener, org.springframework.test.context.event.EventPublishingTestExecutionListener]
+2026-02-17 08:03:47.149 [main] [] INFO  o.s.b.t.c.SpringBootTestContextBootstrapper - Using TestExecutionListeners: [org.springframework.test.context.web.ServletTestExecutionListener@1b47e09c, org.springframework.test.context.support.DirtiesContextBeforeModesTestExecutionListener@79fa9f97, org.springframework.test.context.event.ApplicationEventsTestExecutionListener@400cb9ef, org.springframework.boot.test.mock.mockito.MockitoTestExecutionListener@1405dd10, org.springframework.boot.test.autoconfigure.SpringBootDependencyInjectionTestExecutionListener@30e29c0c, org.springframework.test.context.support.DirtiesContextTestExecutionListener@1dc9aba0, org.springframework.test.context.transaction.TransactionalTestExecutionListener@382fba37, org.springframework.test.context.jdbc.SqlScriptsTestExecutionListener@2f81d7f, org.springframework.test.context.event.EventPublishingTestExecutionListener@265ef3d0, org.springframework.boot.test.mock.mockito.ResetMocksTestExecutionListener@761ac810, org.springframework.boot.test.autoconfigure.restdocs.RestDocsTestExecutionListener@33212ae6, org.springframework.boot.test.autoconfigure.web.client.MockRestServiceServerResetTestExecutionListener@7170da18, org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrintOnlyOnFailureTestExecutionListener@20616795, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverTestExecutionListener@1b61c1, org.springframework.boot.test.autoconfigure.webservices.client.MockWebServiceServerTestExecutionListener@3a571d3e]
+2026-02-17 08:03:47.160 [main] [] DEBUG c.e.h.controller.VitalController - GET /api/vitals/user/999
+2026-02-17 08:03:47.160 [main] [] DEBUG c.e.health.service.HealthService - Fetching vitals for userId=999
+2026-02-17 08:03:47.184 [main] [] INFO  c.e.h.controller.VitalController - POST /api/vitals - userId=2
+2026-02-17 08:03:47.185 [main] [] INFO  c.e.health.service.HealthService - Recording vital for userId=2
+2026-02-17 08:03:47.191 [main] [] INFO  c.e.health.service.HealthService - Vital recorded: id=1, userId=2
+2026-02-17 08:03:47.200 [main] [] INFO  c.e.h.controller.VitalController - POST /api/vitals - userId=2
+2026-02-17 08:03:47.201 [main] [] INFO  c.e.health.service.HealthService - Recording vital for userId=2
+2026-02-17 08:03:47.204 [main] [] INFO  c.e.health.service.HealthService - Vital recorded: id=2, userId=2
+2026-02-17 08:03:47.208 [main] [] DEBUG c.e.h.controller.VitalController - GET /api/vitals/user/2
+2026-02-17 08:03:47.209 [main] [] DEBUG c.e.health.service.HealthService - Fetching vitals for userId=2
+2026-02-17 08:03:47.234 [main] [] INFO  c.e.h.controller.VitalController - POST /api/vitals - userId=1
+2026-02-17 08:03:47.236 [main] [] INFO  c.e.health.service.HealthService - Recording vital for userId=1
+2026-02-17 08:03:47.239 [main] [] INFO  c.e.health.service.HealthService - Vital recorded: id=3, userId=1
+2026-02-17 08:03:47.257 [main] [] INFO  c.e.h.controller.VitalController - POST /api/vitals - userId=3
+2026-02-17 08:03:47.258 [main] [] INFO  c.e.health.service.HealthService - Recording vital for userId=3
+2026-02-17 08:03:47.261 [main] [] INFO  c.e.health.service.HealthService - Vital recorded: id=4, userId=3
+2026-02-17 08:03:47.266 [main] [] INFO  c.e.h.controller.VitalController - POST /api/vitals - userId=3
+2026-02-17 08:03:47.267 [main] [] INFO  c.e.health.service.HealthService - Recording vital for userId=3
+2026-02-17 08:03:47.270 [main] [] INFO  c.e.health.service.HealthService - Vital recorded: id=5, userId=3
+2026-02-17 08:03:47.275 [main] [] DEBUG c.e.h.controller.VitalController - GET /api/vitals/user/3/latest
+2026-02-17 08:03:47.276 [main] [] DEBUG c.e.health.service.HealthService - Fetching latest vital for userId=3
+2026-02-17 08:03:47.313 [main] [] DEBUG c.e.h.controller.VitalController - GET /api/vitals/user/999/latest
+2026-02-17 08:03:47.314 [main] [] DEBUG c.e.health.service.HealthService - Fetching latest vital for userId=999
+2026-02-17 08:03:47.364 [SpringApplicationShutdownHook] [] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-02-17 08:03:47.365 [SpringApplicationShutdownHook] [] INFO  o.h.t.s.i.SchemaDropperImpl$DelayedDropActionImpl - HHH000477: Starting delayed evictData of schema as part of SessionFactory shut-down'
+2026-02-17 08:03:47.374 [SpringApplicationShutdownHook] [] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2026-02-17 08:03:47.379 [SpringApplicationShutdownHook] [] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
