@@ -1,0 +1,477 @@
+# =============================================================================
+# grpc-enterprise-v3 — GitLab Child Pipeline
+# =============================================================================
+# Services:  user-grpc-service | financial-service | health-service |
+#            social-service    | enterprise-ui (React / Nginx)
+# Runtime:   Java 11 (Spring Boot 2.7) + gRPC + React 18 frontend
+# Target:    AWS EKS (grpc-enterprise-v3-eks) / Istio / ECR
+#
+# Pipeline stages
+# ───────────────
+#  test            Maven verify → JUnit + JaCoCo reports
+#  quality         OWASP dependency-check + SpotBugs  (non-blocking)
+#  docker          Build all 5 images and push to ECR  (main only)
+#  scan            Trivy HIGH/CRITICAL scan of ECR images (non-blocking)
+#  infrastructure  terraform plan (auto) → terraform apply (manual gate)
+#  deploy          kubectl deploy to EKS (manual gate, main only)
+#  smoke-test      Pod readiness + actuator /health checks
+#
+# Required CI/CD variables (inherited from GitLab project settings):
+#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_ACCOUNT_ID
+#   DB_PASSWORD        RDS master password (written to K8s secrets)
+#   JWT_SECRET         JWT signing secret  (written to K8s secrets)
+#   TF_VAR_db_password Terraform RDS password variable
+# =============================================================================
+
+variables:
+  # Project layout
+  PROJECT_DIR: "grpc-enterprise-v3"
+
+  # Maven
+  MAVEN_CLI_OPTS: "--batch-mode --no-transfer-progress --errors --fail-at-end"
+  MAVEN_OPTS: "-Xmx1024m -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/grpc"
+
+  # Docker / ECR
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+  AWS_DEFAULT_REGION: "us-east-1"
+  ECR_REGISTRY: "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+  IMAGE_TAG: "${CI_PIPELINE_IID}"
+
+  # Kubernetes
+  EKS_CLUSTER_NAME: "grpc-enterprise-v3-eks"
+  K8S_NAMESPACE: "grpc-enterprise"
+
+  # Terraform
+  TF_VERSION: "1.6.6"
+
+  # Trivy
+  TRIVY_NO_PROGRESS: "true"
+  TRIVY_CACHE_DIR: ".trivycache"
+
+stages:
+  - test
+  - quality
+  - docker
+  - scan
+  - infrastructure
+  - deploy
+  - smoke-test
+
+# =============================================================================
+# SHARED TEMPLATES
+# =============================================================================
+
+# Maven jobs — Java 11, shared local repository cache
+.maven:
+  image: maven:3.9-eclipse-temurin-11
+  cache:
+    key: "grpc-maven-${CI_COMMIT_REF_SLUG}"
+    paths:
+      - .m2/grpc/
+    policy: pull-push
+
+# Docker-in-Docker jobs — all docker build / push operations
+.docker_dind:
+  image: docker:24
+  services:
+    - name: docker:24-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: /certs
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: /certs/client
+  before_script:
+    - apk add --no-cache aws-cli
+    - docker info
+    - aws ecr get-login-password --region $AWS_DEFAULT_REGION
+        | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+# EKS / kubectl jobs — alpine/k8s includes aws-cli + kubectl + helm
+.eks_ops:
+  image: alpine/k8s:1.28.3
+  before_script:
+    - aws sts get-caller-identity
+    - aws eks update-kubeconfig
+        --region $AWS_DEFAULT_REGION
+        --name $EKS_CLUSTER_NAME
+
+# =============================================================================
+# STAGE: test
+# =============================================================================
+
+test:
+  extends: .maven
+  stage: test
+  script:
+    - cd $PROJECT_DIR
+    - mvn $MAVEN_CLI_OPTS clean verify
+  artifacts:
+    when: always
+    reports:
+      junit:
+        - "$PROJECT_DIR/*/target/surefire-reports/TEST-*.xml"
+    paths:
+      - "$PROJECT_DIR/*/target/surefire-reports/"
+      - "$PROJECT_DIR/*/target/site/jacoco/"
+    expire_in: 1 week
+
+# =============================================================================
+# STAGE: quality  (parallel, both non-blocking)
+# =============================================================================
+
+quality:owasp:
+  extends: .maven
+  stage: quality
+  needs: [test]
+  allow_failure: true
+  script:
+    - cd $PROJECT_DIR
+    - mvn $MAVEN_CLI_OPTS
+        org.owasp:dependency-check-maven:aggregate
+        -DfailBuildOnCVSS=10
+        -Dformat=HTML,JSON || true
+  artifacts:
+    when: always
+    paths:
+      - "$PROJECT_DIR/target/dependency-check-report.*"
+    expire_in: 1 week
+
+quality:spotbugs:
+  extends: .maven
+  stage: quality
+  needs: [test]
+  allow_failure: true
+  script:
+    - cd $PROJECT_DIR
+    - mvn $MAVEN_CLI_OPTS
+        com.github.spotbugs:spotbugs-maven-plugin:spotbugs || true
+  artifacts:
+    when: always
+    paths:
+      - "$PROJECT_DIR/*/target/spotbugsXml.xml"
+    expire_in: 1 week
+
+# =============================================================================
+# STAGE: docker  (parallel per service, main branch only)
+# Each job performs: docker build (multi-stage) → push to ECR
+# The Dockerfiles are multi-stage (Maven build + JRE runtime), so no
+# pre-built JARs are needed as artifacts — Docker handles compilation.
+# =============================================================================
+
+.docker_build_push:
+  extends: .docker_dind
+  stage: docker
+  needs: [test]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+docker:user-grpc-service:
+  extends: .docker_build_push
+  script:
+    - cd $PROJECT_DIR
+    - docker build
+        --cache-from $ECR_REGISTRY/user-grpc-service:latest
+        -f user-grpc-service/Dockerfile
+        -t $ECR_REGISTRY/user-grpc-service:$IMAGE_TAG
+        -t $ECR_REGISTRY/user-grpc-service:latest
+        .
+    - docker push $ECR_REGISTRY/user-grpc-service:$IMAGE_TAG
+    - docker push $ECR_REGISTRY/user-grpc-service:latest
+
+docker:financial-service:
+  extends: .docker_build_push
+  script:
+    - cd $PROJECT_DIR
+    - docker build
+        --cache-from $ECR_REGISTRY/financial-service:latest
+        -f financial-service/Dockerfile
+        -t $ECR_REGISTRY/financial-service:$IMAGE_TAG
+        -t $ECR_REGISTRY/financial-service:latest
+        .
+    - docker push $ECR_REGISTRY/financial-service:$IMAGE_TAG
+    - docker push $ECR_REGISTRY/financial-service:latest
+
+docker:health-service:
+  extends: .docker_build_push
+  script:
+    - cd $PROJECT_DIR
+    - docker build
+        --cache-from $ECR_REGISTRY/health-service:latest
+        -f health-service/Dockerfile
+        -t $ECR_REGISTRY/health-service:$IMAGE_TAG
+        -t $ECR_REGISTRY/health-service:latest
+        .
+    - docker push $ECR_REGISTRY/health-service:$IMAGE_TAG
+    - docker push $ECR_REGISTRY/health-service:latest
+
+docker:social-service:
+  extends: .docker_build_push
+  script:
+    - cd $PROJECT_DIR
+    - docker build
+        --cache-from $ECR_REGISTRY/social-service:latest
+        -f social-service/Dockerfile
+        -t $ECR_REGISTRY/social-service:$IMAGE_TAG
+        -t $ECR_REGISTRY/social-service:latest
+        .
+    - docker push $ECR_REGISTRY/social-service:$IMAGE_TAG
+    - docker push $ECR_REGISTRY/social-service:latest
+
+# enterprise-ui uses a self-contained multi-stage Dockerfile (Node build → Nginx)
+# It has no Maven dependency, so needs: [] is correct.
+docker:enterprise-ui:
+  extends: .docker_build_push
+  needs: []
+  script:
+    - cd $PROJECT_DIR
+    - docker build
+        --cache-from $ECR_REGISTRY/enterprise-ui:latest
+        -t $ECR_REGISTRY/enterprise-ui:$IMAGE_TAG
+        -t $ECR_REGISTRY/enterprise-ui:latest
+        enterprise-ui/
+    - docker push $ECR_REGISTRY/enterprise-ui:$IMAGE_TAG
+    - docker push $ECR_REGISTRY/enterprise-ui:latest
+
+# =============================================================================
+# STAGE: scan  (parallel per service, non-blocking)
+# Trivy 0.38+ authenticates to ECR automatically via AWS_* env vars.
+# =============================================================================
+
+.trivy_scan:
+  stage: scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  allow_failure: true
+  cache:
+    key: trivy-db
+    paths:
+      - .trivycache/
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+scan:user-grpc-service:
+  extends: .trivy_scan
+  needs: [docker:user-grpc-service]
+  script:
+    - trivy image
+        --severity HIGH,CRITICAL
+        --ignore-unfixed
+        --exit-code 0
+        --format table
+        $ECR_REGISTRY/user-grpc-service:$IMAGE_TAG
+
+scan:financial-service:
+  extends: .trivy_scan
+  needs: [docker:financial-service]
+  script:
+    - trivy image
+        --severity HIGH,CRITICAL
+        --ignore-unfixed
+        --exit-code 0
+        --format table
+        $ECR_REGISTRY/financial-service:$IMAGE_TAG
+
+scan:health-service:
+  extends: .trivy_scan
+  needs: [docker:health-service]
+  script:
+    - trivy image
+        --severity HIGH,CRITICAL
+        --ignore-unfixed
+        --exit-code 0
+        --format table
+        $ECR_REGISTRY/health-service:$IMAGE_TAG
+
+scan:social-service:
+  extends: .trivy_scan
+  needs: [docker:social-service]
+  script:
+    - trivy image
+        --severity HIGH,CRITICAL
+        --ignore-unfixed
+        --exit-code 0
+        --format table
+        $ECR_REGISTRY/social-service:$IMAGE_TAG
+
+scan:enterprise-ui:
+  extends: .trivy_scan
+  needs: [docker:enterprise-ui]
+  script:
+    - trivy image
+        --severity HIGH,CRITICAL
+        --ignore-unfixed
+        --exit-code 0
+        --format table
+        $ECR_REGISTRY/enterprise-ui:$IMAGE_TAG
+
+# =============================================================================
+# STAGE: infrastructure  (Terraform — main only)
+# terraform:plan runs automatically after scans.
+# terraform:apply is a manual gate — requires human review of the plan.
+# Run these only when infrastructure changes are needed; application-only
+# deployments can skip this stage.
+# =============================================================================
+
+terraform:plan:
+  image: hashicorp/terraform:$TF_VERSION
+  stage: infrastructure
+  needs:
+    - scan:user-grpc-service
+    - scan:financial-service
+    - scan:health-service
+    - scan:social-service
+    - scan:enterprise-ui
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  before_script:
+    - cd $PROJECT_DIR/terraform
+    - terraform init -input=false
+  script:
+    - terraform validate
+    - terraform plan -input=false -out=tfplan
+  artifacts:
+    paths:
+      - $PROJECT_DIR/terraform/tfplan
+      - $PROJECT_DIR/terraform/.terraform.lock.hcl
+    expire_in: 1 day
+
+terraform:apply:
+  image: hashicorp/terraform:$TF_VERSION
+  stage: infrastructure
+  needs: [terraform:plan]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production
+    action: prepare
+  before_script:
+    - cd $PROJECT_DIR/terraform
+    - terraform init -input=false
+  script:
+    - terraform apply -input=false tfplan
+  dependencies:
+    - terraform:plan
+
+# =============================================================================
+# STAGE: deploy  (manual gate — main only)
+# Requires a human to click "play" in the GitLab UI before deployment starts.
+# Uses kubectl apply + kubectl set image to avoid manifest patching issues.
+# The deployment order matches the Jenkinsfile:
+#   1. Namespace + secrets
+#   2. All service manifests applied
+#   3. Image tags patched via kubectl set image
+#   4. Rollout status wait (300s per service)
+# =============================================================================
+
+deploy:
+  extends: .eks_ops
+  stage: deploy
+  needs:
+    - scan:user-grpc-service
+    - scan:financial-service
+    - scan:health-service
+    - scan:social-service
+    - scan:enterprise-ui
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production
+    url: https://grpc-enterprise.example.com   # update to your ingress URL
+  script:
+    # ── Namespace ──────────────────────────────────────────────────────────────
+    - kubectl create namespace $K8S_NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
+
+    # ── Secrets ────────────────────────────────────────────────────────────────
+    - |
+      for SVC in grpc-enterprise financial-service health-service social-service; do
+        kubectl create secret generic ${SVC}-db-secret \
+          --namespace $K8S_NAMESPACE \
+          --from-literal=username=grpcadmin \
+          --from-literal=password="$DB_PASSWORD" \
+          --dry-run=client -o yaml | kubectl apply -f -
+      done
+    - |
+      kubectl create secret generic grpc-enterprise-jwt \
+        --namespace $K8S_NAMESPACE \
+        --from-literal=jwt-secret="$JWT_SECRET" \
+        --dry-run=client -o yaml | kubectl apply -f -
+
+    # ── Apply manifests ────────────────────────────────────────────────────────
+    - kubectl apply -f $PROJECT_DIR/k8s/ --namespace $K8S_NAMESPACE
+
+    # ── Update image tags ──────────────────────────────────────────────────────
+    - kubectl set image deployment/user-grpc-service
+        user-grpc-service=$ECR_REGISTRY/user-grpc-service:$IMAGE_TAG
+        --namespace $K8S_NAMESPACE
+    - kubectl set image deployment/financial-service
+        financial-service=$ECR_REGISTRY/financial-service:$IMAGE_TAG
+        --namespace $K8S_NAMESPACE
+    - kubectl set image deployment/health-service
+        health-service=$ECR_REGISTRY/health-service:$IMAGE_TAG
+        --namespace $K8S_NAMESPACE
+    - kubectl set image deployment/social-service
+        social-service=$ECR_REGISTRY/social-service:$IMAGE_TAG
+        --namespace $K8S_NAMESPACE
+    - kubectl set image deployment/enterprise-ui
+        enterprise-ui=$ECR_REGISTRY/enterprise-ui:$IMAGE_TAG
+        --namespace $K8S_NAMESPACE
+
+    # ── Wait for rollouts ──────────────────────────────────────────────────────
+    - |
+      for DEPLOY in user-grpc-service financial-service health-service social-service enterprise-ui; do
+        echo "Waiting for rollout: $DEPLOY ..."
+        kubectl rollout status deployment/$DEPLOY \
+          --namespace $K8S_NAMESPACE \
+          --timeout=300s
+      done
+
+# =============================================================================
+# STAGE: smoke-test  (runs automatically after deploy)
+# Waits for all pods to reach Ready state, then calls /actuator/health via
+# kubectl exec inside each pod — no ingress required.
+# =============================================================================
+
+smoke-test:
+  extends: .eks_ops
+  stage: smoke-test
+  needs: [deploy]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    # ── Pod readiness ──────────────────────────────────────────────────────────
+    - |
+      for SVC in user-grpc-service financial-service health-service social-service enterprise-ui; do
+        echo "Waiting for $SVC pods to be ready ..."
+        kubectl wait --for=condition=ready pod \
+          -l app=$SVC \
+          --namespace $K8S_NAMESPACE \
+          --timeout=120s
+      done
+
+    # ── Actuator health checks ─────────────────────────────────────────────────
+    - |
+      declare -A PORTS=(
+        ["user-grpc-service"]=8080
+        ["financial-service"]=8081
+        ["health-service"]=8082
+        ["social-service"]=8083
+      )
+      FAILED=0
+      for SVC in "${!PORTS[@]}"; do
+        PORT=${PORTS[$SVC]}
+        echo "Health-checking $SVC on :$PORT ..."
+        STATUS=$(kubectl exec -n $K8S_NAMESPACE deploy/$SVC -- \
+          wget -qO- --timeout=10 http://localhost:$PORT/actuator/health 2>/dev/null || echo "UNREACHABLE")
+        if echo "$STATUS" | grep -q '"status":"UP"'; then
+          echo "$SVC: HEALTHY"
+        else
+          echo "$SVC: $STATUS"
+          FAILED=1
+        fi
+      done
+      exit $FAILED
