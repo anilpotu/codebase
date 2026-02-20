@@ -1,0 +1,85 @@
+# =============================================================================
+# secure-distributed-system  —  production environment overrides
+# =============================================================================
+
+global:
+  imageRegistry: "123456789.dkr.ecr.us-east-1.amazonaws.com/secure-distributed"  # replace
+  imagePullPolicy: Always
+  istio:
+    enabled: true
+
+secrets:
+  create: false   # Secrets pre-created via AWS Secrets Manager / external-secrets operator
+
+istio:
+  gateway:
+    host: api.secure-distributed.example.com
+    tlsCredentialName: secure-distributed-tls
+  rateLimiting:
+    apiGateway:
+      maxTokens: 200
+      fillInterval: 60s
+  tracing:
+    samplingPercentage: 10
+
+config-server:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+eureka-server:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+api-gateway:
+  replicaCount: 2
+  springProfile: prod
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+auth-service:
+  replicaCount: 2
+  springProfile: prod
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+user-service:
+  replicaCount: 2
+  springProfile: prod
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+order-service:
+  replicaCount: 2
+  springProfile: prod
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+product-service:
+  replicaCount: 2
+  springProfile: prod
+  pdb:
+    enabled: true
+    minAvailable: 1

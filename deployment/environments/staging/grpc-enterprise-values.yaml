@@ -1,0 +1,47 @@
+# =============================================================================
+# grpc-enterprise-v3  —  staging environment overrides
+# =============================================================================
+
+global:
+  imageRegistry: "123456789.dkr.ecr.us-east-1.amazonaws.com"  # replace with real account
+  imagePullPolicy: Always
+  istio:
+    enabled: true
+
+istio:
+  gateway:
+    apiHost: api-staging.enterprise.example.com
+    grpcHost: grpc-staging.enterprise.example.com
+    tlsCredentialName: enterprise-tls-staging
+  jwtIssuer: "grpc-enterprise-v3"
+
+user-grpc-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 384Mi
+    limits:
+      cpu: 800m
+      memory: 768Mi
+
+financial-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+health-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+social-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1

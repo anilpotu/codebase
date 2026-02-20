@@ -1,0 +1,59 @@
+# =============================================================================
+# grpc-enterprise-v3  —  dev environment overrides
+# Applied on top of grpc-enterprise-v3/helm/values.yaml
+# =============================================================================
+
+global:
+  imageRegistry: ""        # Docker Hub (anilpotu/*)
+  imagePullPolicy: Always
+  istio:
+    enabled: false         # Istio typically not available in dev clusters
+
+# Lower replica counts for dev to save resources
+user-grpc-service:
+  replicaCount: 1
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+financial-service:
+  replicaCount: 1
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+health-service:
+  replicaCount: 1
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+social-service:
+  replicaCount: 1
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

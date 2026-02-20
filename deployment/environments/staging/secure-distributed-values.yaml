@@ -1,0 +1,52 @@
+# =============================================================================
+# secure-distributed-system  —  staging environment overrides
+# =============================================================================
+
+global:
+  imageRegistry: "123456789.dkr.ecr.us-east-1.amazonaws.com/secure-distributed"  # replace
+  imagePullPolicy: Always
+  istio:
+    enabled: true
+
+secrets:
+  create: false    # Managed by external-secrets or pre-created in staging
+
+istio:
+  gateway:
+    host: api-staging.secure-distributed.example.com
+    tlsCredentialName: secure-distributed-tls-staging
+
+api-gateway:
+  replicaCount: 2
+  springProfile: staging
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+auth-service:
+  replicaCount: 2
+  springProfile: staging
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+user-service:
+  replicaCount: 2
+  springProfile: staging
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+order-service:
+  replicaCount: 2
+  springProfile: staging
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+product-service:
+  replicaCount: 2
+  springProfile: staging
+  pdb:
+    enabled: true
+    minAvailable: 1

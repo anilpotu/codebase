@@ -1,0 +1,107 @@
+# =============================================================================
+# secure-distributed-system  —  dev environment overrides
+# Applied on top of secure-distributed-system/helm/values.yaml
+# =============================================================================
+
+global:
+  imageRegistry: "secure-distributed"   # Docker Hub org
+  imagePullPolicy: Always
+  istio:
+    enabled: false
+
+secrets:
+  create: true
+  # Dev placeholder values — override at install time via --set or external secrets
+  jwtSecret: "ZGV2LWp3dC1zZWNyZXQ="           # base64("dev-jwt-secret")
+  configUser: "Y29uZmlnLXVzZXI="               # base64("config-user")
+  configPassword: "Y29uZmlnLXBhc3M="           # base64("config-pass")
+  eurekaUser: "ZXVyZWth"                        # base64("eureka")
+  eurekaPassword: "ZXVyZWth"                    # base64("eureka")
+
+config-server:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+eureka-server:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+redis:
+  replicaCount: 1
+
+api-gateway:
+  replicaCount: 1
+  springProfile: dev
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+auth-service:
+  replicaCount: 1
+  springProfile: dev
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+user-service:
+  replicaCount: 1
+  springProfile: dev
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+order-service:
+  replicaCount: 1
+  springProfile: dev
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+product-service:
+  replicaCount: 1
+  springProfile: dev
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
