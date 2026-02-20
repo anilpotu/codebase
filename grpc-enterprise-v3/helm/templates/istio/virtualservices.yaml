@@ -1,0 +1,142 @@
+{{- if .Values.global.istio.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: grpc-enterprise-v3
+  namespace: {{ .Values.global.namespace }}
+spec:
+  hosts:
+    - {{ .Values.istio.gateway.grpcHost | quote }}
+    - grpc-enterprise-v3
+  gateways:
+    - enterprise-gateway
+    - mesh
+  http:
+    - match:
+        - port: {{ index .Values "user-grpc-service" "service" "grpcPort" }}
+      route:
+        - destination:
+            host: grpc-enterprise-v3
+            port:
+              number: {{ index .Values "user-grpc-service" "service" "grpcPort" }}
+            subset: v1
+          weight: 100
+      timeout: 10s
+      retries:
+        attempts: 3
+        perTryTimeout: 3s
+        retryOn: unavailable,resource-exhausted,deadline-exceeded
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: financial-service
+  namespace: {{ .Values.global.namespace }}
+spec:
+  hosts:
+    - {{ .Values.istio.gateway.apiHost | quote }}
+    - financial-service
+  gateways:
+    - enterprise-gateway
+    - mesh
+  http:
+    - match:
+        - uri:
+            prefix: /api/accounts
+        - uri:
+            prefix: /api/transactions
+      route:
+        - destination:
+            host: financial-service
+            port:
+              number: {{ index .Values "financial-service" "service" "port" }}
+            subset: v1
+          weight: 100
+      timeout: 5s
+      retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: 5xx,reset,connect-failure,retriable-4xx
+      corsPolicy:
+        allowOrigins:
+          - regex: ".*"
+        allowMethods: [GET, POST, PUT, DELETE]
+        allowHeaders: [Authorization, Content-Type]
+        maxAge: "24h"
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: health-service
+  namespace: {{ .Values.global.namespace }}
+spec:
+  hosts:
+    - {{ .Values.istio.gateway.apiHost | quote }}
+    - health-service
+  gateways:
+    - enterprise-gateway
+    - mesh
+  http:
+    - match:
+        - uri:
+            prefix: /api/health-records
+        - uri:
+            prefix: /api/vitals
+      route:
+        - destination:
+            host: health-service
+            port:
+              number: {{ index .Values "health-service" "service" "port" }}
+            subset: v1
+          weight: 100
+      timeout: 5s
+      retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: 5xx,reset,connect-failure,retriable-4xx
+      corsPolicy:
+        allowOrigins:
+          - regex: ".*"
+        allowMethods: [GET, POST, PUT, DELETE]
+        allowHeaders: [Authorization, Content-Type]
+        maxAge: "24h"
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: social-service
+  namespace: {{ .Values.global.namespace }}
+spec:
+  hosts:
+    - {{ .Values.istio.gateway.apiHost | quote }}
+    - social-service
+  gateways:
+    - enterprise-gateway
+    - mesh
+  http:
+    - match:
+        - uri:
+            prefix: /api/profiles
+        - uri:
+            prefix: /api/posts
+        - uri:
+            prefix: /api/connections
+      route:
+        - destination:
+            host: social-service
+            port:
+              number: {{ index .Values "social-service" "service" "port" }}
+            subset: v1
+          weight: 100
+      timeout: 5s
+      retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: 5xx,reset,connect-failure,retriable-4xx
+      corsPolicy:
+        allowOrigins:
+          - regex: ".*"
+        allowMethods: [GET, POST, PUT, DELETE]
+        allowHeaders: [Authorization, Content-Type]
+        maxAge: "24h"
+{{- end }}

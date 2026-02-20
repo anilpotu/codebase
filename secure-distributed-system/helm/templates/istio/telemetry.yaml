@@ -1,0 +1,13 @@
+{{- if .Values.global.istio.enabled }}
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: secure-distributed-telemetry
+  namespace: {{ .Values.global.namespace }}
+spec:
+  tracing:
+    - randomSamplingPercentage: {{ .Values.istio.tracing.samplingPercentage }}
+  metrics:
+    - providers:
+        - name: prometheus
+{{- end }}

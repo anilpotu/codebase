@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: grpc-enterprise-v3
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: grpc-enterprise-v3
+    app.kubernetes.io/name: grpc-enterprise-v3
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: {{ .Values.service.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+    - name: http-actuator
+      port: {{ .Values.service.actuatorPort }}
+      targetPort: http-actuator
+      protocol: TCP
+  selector:
+    app: grpc-enterprise-v3

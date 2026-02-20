@@ -1,0 +1,20 @@
+replicaCount: 1
+
+image:
+  repository: eureka-server
+  tag: latest
+
+service:
+  port: 8761
+
+configServer:
+  host: config-server
+  port: 8888
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

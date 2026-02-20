@@ -1,0 +1,10 @@
+{{- if .Values.global.istio.enabled }}
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: {{ .Values.global.namespace }}
+spec:
+  mtls:
+    mode: STRICT
+{{- end }}

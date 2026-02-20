@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: financial-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: financial-service
+    app.kubernetes.io/name: financial-service
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    app: financial-service

@@ -1,0 +1,28 @@
+{{- if .Values.global.istio.enabled }}
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: mesh-telemetry
+  namespace: {{ .Values.global.namespace }}
+spec:
+  tracing:
+    - providers:
+        - name: {{ .Values.istio.tracing.provider }}
+      randomSamplingPercentage: {{ .Values.istio.tracing.samplingPercentage }}
+      customTags:
+        environment:
+          literal:
+            value: "production"
+  metrics:
+    - providers:
+        - name: prometheus
+      overrides:
+        - match:
+            metric: ALL_METRICS
+            mode: CLIENT_AND_SERVER
+          tagOverrides:
+            response_code:
+              operation: UPSERT
+            grpc_response_status:
+              operation: UPSERT
+{{- end }}

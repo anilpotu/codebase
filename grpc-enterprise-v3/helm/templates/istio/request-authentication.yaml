@@ -1,0 +1,32 @@
+{{- if .Values.global.istio.enabled }}
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: jwt-authentication
+  namespace: {{ .Values.global.namespace }}
+spec:
+  jwtRules:
+    - issuer: {{ .Values.istio.jwtIssuer | quote }}
+      forwardOriginalToken: true
+      outputPayloadToHeader: "x-jwt-payload"
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: require-jwt
+  namespace: {{ .Values.global.namespace }}
+spec:
+  action: DENY
+  rules:
+    - from:
+        - source:
+            notRequestPrincipals: ["*"]
+      to:
+        - operation:
+            notPaths:
+              - "/api/auth/*"
+              - "/actuator/*"
+              - "/swagger-ui/*"
+              - "/v3/api-docs/*"
+              - "/webjars/*"
+{{- end }}

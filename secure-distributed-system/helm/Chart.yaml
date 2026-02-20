@@ -1,0 +1,39 @@
+apiVersion: v2
+name: secure-distributed-system
+description: Umbrella Helm chart for the Secure Distributed System microservices platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+maintainers:
+  - name: platform-team
+keywords:
+  - spring-cloud
+  - eureka
+  - microservices
+  - spring-boot
+  - jwt
+dependencies:
+  - name: config-server
+    version: "1.0.0"
+    repository: "file://charts/config-server"
+  - name: eureka-server
+    version: "1.0.0"
+    repository: "file://charts/eureka-server"
+  - name: redis
+    version: "1.0.0"
+    repository: "file://charts/redis"
+  - name: api-gateway
+    version: "1.0.0"
+    repository: "file://charts/api-gateway"
+  - name: auth-service
+    version: "1.0.0"
+    repository: "file://charts/auth-service"
+  - name: user-service
+    version: "1.0.0"
+    repository: "file://charts/user-service"
+  - name: order-service
+    version: "1.0.0"
+    repository: "file://charts/order-service"
+  - name: product-service
+    version: "1.0.0"
+    repository: "file://charts/product-service"

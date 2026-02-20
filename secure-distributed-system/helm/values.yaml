@@ -1,0 +1,187 @@
+# Global values shared across all sub-charts
+global:
+  # Docker registry prefix. Set to ECR URL e.g. "123456789.dkr.ecr.us-east-1.amazonaws.com"
+  # Leave empty to use Docker Hub with imageRegistry as the org
+  imageRegistry: "secure-distributed"
+  namespace: secure-distributed
+  imagePullPolicy: IfNotPresent
+  imagePullSecrets: []
+  istio:
+    enabled: true
+
+# Istio mesh configuration (umbrella-level)
+istio:
+  gateway:
+    host: api.secure-distributed.example.com
+    tlsCredentialName: secure-distributed-tls
+  rateLimiting:
+    apiGateway:
+      maxTokens: 200
+      fillInterval: 60s
+  tracing:
+    samplingPercentage: 100
+
+# Secret management
+# Set secrets.create: false if managing secrets externally (e.g. external-secrets operator)
+secrets:
+  create: true
+  # Base64-encoded secret values. Override on install:
+  #   helm install ... --set secrets.jwtSecret=$(echo -n 'mysecret' | base64)
+  jwtSecret: "bXlTZWNyZXRLZXlGb3JKV1RUb2tlbkdlbmVyYXRpb25BbmRWYWxpZGF0aW9uMTIzNDU2Nzg5MDEyMzQ1Njc4OTA="
+  configUser: "Y29uZmlnLXVzZXI="
+  configPassword: "Y29uZmlnLXBhc3M="
+  eurekaUser: "ZXVyZWth"
+  eurekaPassword: "ZXVyZWth"
+
+# config-server sub-chart values
+config-server:
+  replicaCount: 1
+  image:
+    repository: config-server
+    tag: latest
+  service:
+    port: 8888
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# eureka-server sub-chart values
+eureka-server:
+  replicaCount: 1
+  image:
+    repository: eureka-server
+    tag: latest
+  service:
+    port: 8761
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# redis sub-chart values
+redis:
+  replicaCount: 1
+  image:
+    repository: redis
+    tag: 7-alpine
+    registry: ""  # override to use custom registry; empty = Docker Hub
+  service:
+    port: 6379
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# api-gateway sub-chart values
+api-gateway:
+  replicaCount: 2
+  image:
+    repository: api-gateway
+    tag: latest
+  service:
+    port: 8000
+  springProfile: prod
+  redis:
+    host: redis
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# auth-service sub-chart values
+auth-service:
+  replicaCount: 2
+  image:
+    repository: auth-service
+    tag: latest
+  service:
+    port: 8080
+  springProfile: prod
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# user-service sub-chart values
+user-service:
+  replicaCount: 2
+  image:
+    repository: user-service
+    tag: latest
+  service:
+    port: 8081
+  springProfile: prod
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# order-service sub-chart values
+order-service:
+  replicaCount: 2
+  image:
+    repository: order-service
+    tag: latest
+  service:
+    port: 8082
+  springProfile: prod
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# product-service sub-chart values
+product-service:
+  replicaCount: 2
+  image:
+    repository: product-service
+    tag: latest
+  service:
+    port: 8083
+  springProfile: prod
+  redis:
+    host: redis
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

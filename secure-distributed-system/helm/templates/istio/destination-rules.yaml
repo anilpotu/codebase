@@ -1,0 +1,32 @@
+{{- if .Values.global.istio.enabled }}
+{{- $services := list "api-gateway" "auth-service" "user-service" "order-service" "product-service" }}
+{{- range $services }}
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: {{ . }}
+  namespace: {{ $.Values.global.namespace }}
+spec:
+  host: {{ . }}
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        h2UpgradePolicy: DEFAULT
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+    - name: v1
+      labels:
+        version: v1
+---
+{{- end }}
+{{- end }}
