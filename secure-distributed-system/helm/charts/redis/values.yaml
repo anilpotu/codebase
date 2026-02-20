@@ -1,0 +1,18 @@
+replicaCount: 1
+
+image:
+  repository: redis
+  tag: 7-alpine
+  # Set registry to override Docker Hub (e.g. a private mirror)
+  registry: ""
+
+service:
+  port: 6379
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi

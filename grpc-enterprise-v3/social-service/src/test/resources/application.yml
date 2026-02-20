@@ -16,3 +16,6 @@ spring:
 
 server:
   port: 0
+
+jwt:
+  secret: test-secret-key-for-unit-tests-must-be-at-least-32-chars

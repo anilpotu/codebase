@@ -1,0 +1,62 @@
+# =============================================================================
+# Monorepo Root Pipeline
+# =============================================================================
+# This file is the single entry point for GitLab CI/CD. It triggers a child
+# pipeline for each project only when files in that project change, preventing
+# unnecessary builds when only one project is modified.
+#
+# Required GitLab CI/CD Variables (Settings → CI/CD → Variables):
+#   AWS_ACCESS_KEY_ID       AWS IAM access key with ECR / EKS / Terraform perms
+#   AWS_SECRET_ACCESS_KEY   Corresponding secret key
+#   AWS_ACCOUNT_ID          12-digit AWS account ID (used to build ECR URLs)
+#   DB_PASSWORD             RDS PostgreSQL master password
+#   JWT_SECRET              JWT signing secret (written to K8s secrets)
+#   TF_VAR_db_password      Terraform variable for RDS master password
+#
+# Optional:
+#   SONARQUBE_ENABLED       Set to "true" to activate SonarQube analysis
+#   SONAR_HOST_URL          SonarQube server URL
+#   SONAR_TOKEN             SonarQube authentication token
+# =============================================================================
+
+stages:
+  - trigger
+
+# -----------------------------------------------------------------------------
+# grpc-enterprise-v3
+# Triggered on every push to main OR when any file under grpc-enterprise-v3/
+# changes on any branch / MR.
+# -----------------------------------------------------------------------------
+grpc-enterprise-v3:
+  stage: trigger
+  trigger:
+    include: grpc-enterprise-v3/.gitlab-ci.yml
+    strategy: depend          # parent pipeline reflects child pass/fail
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - grpc-enterprise-v3/**/*
+        - grpc-enterprise-v3/.gitlab-ci.yml
+    - changes:
+        - grpc-enterprise-v3/**/*
+        - grpc-enterprise-v3/.gitlab-ci.yml
+
+# -----------------------------------------------------------------------------
+# secure-distributed-system
+# Same change-based trigger strategy.
+# -----------------------------------------------------------------------------
+secure-distributed-system:
+  stage: trigger
+  trigger:
+    include: secure-distributed-system/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - secure-distributed-system/**/*
+        - secure-distributed-system/.gitlab-ci.yml
+    - changes:
+        - secure-distributed-system/**/*
+        - secure-distributed-system/.gitlab-ci.yml

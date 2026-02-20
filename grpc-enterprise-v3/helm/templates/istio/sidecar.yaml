@@ -1,0 +1,12 @@
+{{- if .Values.global.istio.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: Sidecar
+metadata:
+  name: default
+  namespace: {{ .Values.global.namespace }}
+spec:
+  egress:
+    - hosts:
+        - "./*"
+        - "istio-system/*"
+{{- end }}

@@ -1,0 +1,26 @@
+replicaCount: 2
+
+image:
+  repository: social-service
+  tag: latest
+
+service:
+  port: 8083
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+db:
+  url: "jdbc:postgresql://postgres-service:5432/socialdb"
+  secretName: social-service-db-secret
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+javaOpts: "-XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0"

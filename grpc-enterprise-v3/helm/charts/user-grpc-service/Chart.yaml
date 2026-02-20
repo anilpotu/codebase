@@ -1,0 +1,6 @@
+apiVersion: v2
+name: user-grpc-service
+description: gRPC user service sub-chart for grpc-enterprise-v3
+type: application
+version: 1.0.0
+appVersion: "3.0.0"

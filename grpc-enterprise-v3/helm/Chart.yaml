@@ -1,0 +1,26 @@
+apiVersion: v2
+name: grpc-enterprise-v3
+description: Umbrella Helm chart for the gRPC Enterprise v3 microservices platform
+type: application
+version: 1.0.0
+appVersion: "3.0.0"
+maintainers:
+  - name: platform-team
+keywords:
+  - grpc
+  - enterprise
+  - microservices
+  - spring-boot
+dependencies:
+  - name: user-grpc-service
+    version: "1.0.0"
+    repository: "file://charts/user-grpc-service"
+  - name: financial-service
+    version: "1.0.0"
+    repository: "file://charts/financial-service"
+  - name: health-service
+    version: "1.0.0"
+    repository: "file://charts/health-service"
+  - name: social-service
+    version: "1.0.0"
+    repository: "file://charts/social-service"

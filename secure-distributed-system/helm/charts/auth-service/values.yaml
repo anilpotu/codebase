@@ -1,0 +1,30 @@
+replicaCount: 2
+
+image:
+  repository: auth-service
+  tag: latest
+
+service:
+  port: 8080
+
+springProfile: prod
+
+eurekaServer:
+  host: eureka-server
+  port: 8761
+
+configServer:
+  host: config-server
+  port: 8888
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
