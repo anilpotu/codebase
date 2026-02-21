@@ -39,7 +39,7 @@ variables:
 
   # Maven — Java 8
   MAVEN_CLI_OPTS: "--batch-mode --no-transfer-progress --errors --fail-at-end"
-  MAVEN_OPTS: "-Xmx1024m -XX:MaxPermSize=256m -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/sds"
+  MAVEN_OPTS: "-Xmx1024m -XX:MaxMetaspaceSize=256m -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/sds"
 
   # Docker / ECR
   DOCKER_DRIVER: overlay2
@@ -122,8 +122,10 @@ build:
   stage: build
   script:
     - cd $PROJECT_DIR
-    - mvn $MAVEN_CLI_OPTS clean package
-        ${SKIP_TESTS:+-DskipTests}
+    - |
+      SKIP_FLAG=""
+      [ "$SKIP_TESTS" = "true" ] && SKIP_FLAG="-DskipTests"
+      mvn $MAVEN_CLI_OPTS clean package $SKIP_FLAG
   artifacts:
     paths:
       - "$PROJECT_DIR/*/target/*.jar"

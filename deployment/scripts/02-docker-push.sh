@@ -32,7 +32,7 @@ docker info >/dev/null 2>&1 || fail "Docker daemon is not running"
 
 # ── ECR login (if registry looks like ECR) ────────────────────────────────────
 if [[ "$REGISTRY" == *".dkr.ecr."* ]]; then
-  REGION=$(echo "$REGISTRY" | grep -oP '(?<=ecr\.)[^.]+')
+  REGION=$(echo "$REGISTRY" | sed 's/.*\.ecr\.\([^.]*\)\..*/\1/')
   log "Logging in to ECR (region: $REGION)..."
   aws ecr get-login-password --region "$REGION" \
     | docker login --username AWS --password-stdin "$REGISTRY"
@@ -64,7 +64,7 @@ build_grpc() {
   echo -e "${YELLOW}═══ grpc-enterprise-v3 (5 images) ═══${NC}"
   GRPC_DIR="$REPO_ROOT/grpc-enterprise-v3"
   for svc in user-grpc-service financial-service health-service social-service; do
-    build_and_push "$svc" "$GRPC_DIR/$svc" "$GRPC_DIR/$svc/Dockerfile"
+    build_and_push "$svc" "$GRPC_DIR" "$GRPC_DIR/$svc/Dockerfile"
   done
   build_and_push "enterprise-ui" "$GRPC_DIR/enterprise-ui"
 }

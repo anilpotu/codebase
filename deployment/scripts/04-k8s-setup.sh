@@ -107,12 +107,6 @@ setup_sds() {
   kubectl label namespace "$NAMESPACE" istio-injection=enabled --overwrite
 
   log "Creating app-secrets (jwt, config, eureka credentials)..."
-  JWT_B64=$(echo -n "$JWT_SECRET" | base64)
-  CONFIG_USER_B64=$(echo -n "config-user" | base64)
-  CONFIG_PASS_B64=$(echo -n "config-pass" | base64)
-  EUREKA_USER_B64=$(echo -n "eureka" | base64)
-  EUREKA_PASS_B64=$(echo -n "eureka" | base64)
-
   kubectl create secret generic app-secrets \
     --namespace "$NAMESPACE" \
     --from-literal=jwt-secret="$JWT_SECRET" \
