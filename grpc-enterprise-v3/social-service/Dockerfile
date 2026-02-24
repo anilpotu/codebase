@@ -1,6 +1,9 @@
 FROM maven:3.9-eclipse-temurin-11 AS build
 WORKDIR /app
 COPY pom.xml .
+COPY user-grpc-service/pom.xml user-grpc-service/pom.xml
+COPY financial-service/pom.xml financial-service/pom.xml
+COPY health-service/pom.xml health-service/pom.xml
 COPY social-service/pom.xml social-service/pom.xml
 COPY social-service/src social-service/src
 RUN mvn clean package -DskipTests -pl social-service -am

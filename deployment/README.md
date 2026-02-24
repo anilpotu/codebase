@@ -260,20 +260,24 @@ mvn clean package --batch-mode -DskipTests
 
 ### Docker image inventory
 
-| Image | Dockerfile | Project |
-|---|---|---|
-| `user-grpc-service` | grpc-enterprise-v3/user-grpc-service/Dockerfile | grpc |
-| `financial-service` | grpc-enterprise-v3/financial-service/Dockerfile | grpc |
-| `health-service` | grpc-enterprise-v3/health-service/Dockerfile | grpc |
-| `social-service` | grpc-enterprise-v3/social-service/Dockerfile | grpc |
-| `enterprise-ui` | grpc-enterprise-v3/enterprise-ui/Dockerfile | grpc |
-| `secure-distributed/config-server` | secure-distributed-system/config-server/Dockerfile | sds |
-| `secure-distributed/eureka-server` | secure-distributed-system/eureka-server/Dockerfile | sds |
-| `secure-distributed/api-gateway` | secure-distributed-system/api-gateway/Dockerfile | sds |
-| `secure-distributed/auth-service` | secure-distributed-system/auth-service/Dockerfile | sds |
-| `secure-distributed/user-service` | secure-distributed-system/user-service/Dockerfile | sds |
-| `secure-distributed/order-service` | secure-distributed-system/order-service/Dockerfile | sds |
-| `secure-distributed/product-service` | secure-distributed-system/product-service/Dockerfile | sds |
+| Image | Base image | Dockerfile | Project |
+|---|---|---|---|
+| `user-grpc-service` | `eclipse-temurin:11-jre-alpine` | grpc-enterprise-v3/user-grpc-service/Dockerfile | grpc |
+| `financial-service` | `eclipse-temurin:11-jre-alpine` | grpc-enterprise-v3/financial-service/Dockerfile | grpc |
+| `health-service` | `eclipse-temurin:11-jre-alpine` | grpc-enterprise-v3/health-service/Dockerfile | grpc |
+| `social-service` | `eclipse-temurin:11-jre-alpine` | grpc-enterprise-v3/social-service/Dockerfile | grpc |
+| `enterprise-ui` | `nginx:alpine` | grpc-enterprise-v3/enterprise-ui/Dockerfile | grpc |
+| `config-server` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/config-server/Dockerfile | sds |
+| `eureka-server` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/eureka-server/Dockerfile | sds |
+| `api-gateway` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/api-gateway/Dockerfile | sds |
+| `auth-service` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/auth-service/Dockerfile | sds |
+| `user-service` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/user-service/Dockerfile | sds |
+| `order-service` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/order-service/Dockerfile | sds |
+| `product-service` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/product-service/Dockerfile | sds |
+
+> **grpc-enterprise-v3 build note:** All 4 service Dockerfiles use a multi-stage Maven build with the parent `grpc-enterprise-v3/` directory as the Docker build context. Each Dockerfile copies all sibling module `pom.xml` files before the `mvn` step so Maven can resolve the full multi-module parent POM.
+>
+> **secure-distributed-system build note:** These Dockerfiles are single-stage — they copy a pre-built JAR from `target/` (produced by `01-build.sh`). Run the Maven build first before building Docker images.
 
 ### ECR login (if using ECR)
 
@@ -532,7 +536,7 @@ charts/
 
 | Key | Default | Description |
 |---|---|---|
-| `global.imageRegistry` | `secure-distributed` | Docker Hub org |
+| `global.imageRegistry` | `""` | Registry prefix (empty = Docker Hub) |
 | `global.namespace` | `secure-distributed` | Target namespace |
 | `global.istio.enabled` | `true` | Toggle Istio resources |
 | `secrets.create` | `true` | Create app-secrets Secret |
@@ -594,7 +598,7 @@ The SDS services have a strict startup order. Deploy in sequence:
 
 ```bash
 NAMESPACE="secure-distributed"
-REGISTRY="123456789.dkr.ecr.us-east-1.amazonaws.com/secure-distributed"
+REGISTRY="123456789.dkr.ecr.us-east-1.amazonaws.com"
 TAG="build-42"
 
 # 1. Namespace + secrets
@@ -1046,7 +1050,7 @@ kubectl rollout undo deployment/financial-service \
 ```bash
 # Set a specific image tag directly
 kubectl set image deployment/api-gateway \
-  api-gateway=123456789.dkr.ecr.us-east-1.amazonaws.com/secure-distributed/api-gateway:build-40 \
+  api-gateway=123456789.dkr.ecr.us-east-1.amazonaws.com/api-gateway:build-40 \
   -n secure-distributed
 
 kubectl rollout status deployment/api-gateway -n secure-distributed

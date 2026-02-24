@@ -75,7 +75,7 @@ build_sds() {
   echo -e "${YELLOW}═══ secure-distributed-system (7 images) ═══${NC}"
   SDS_DIR="$REPO_ROOT/secure-distributed-system"
   for svc in config-server eureka-server api-gateway auth-service user-service order-service product-service; do
-    build_and_push "secure-distributed/$svc" "$SDS_DIR/$svc" "$SDS_DIR/$svc/Dockerfile"
+    build_and_push "$svc" "$SDS_DIR/$svc" "$SDS_DIR/$svc/Dockerfile"
   done
 }
 
