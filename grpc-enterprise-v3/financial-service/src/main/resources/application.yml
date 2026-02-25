@@ -2,9 +2,9 @@ spring:
   application:
     name: financial-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/financialdb
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/financialdb
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -76,5 +76,5 @@ resilience4j:
         eventConsumerBufferSize: 10
 
 jwt:
-  secret: enterpriseGrpcSecretKeyForJWT256bitMinimumLength!
+  secret: ${JWT_SECRET:enterpriseGrpcSecretKeyForJWT256bitMinimumLength!}
   expiration: 86400000

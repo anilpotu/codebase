@@ -11,4 +11,5 @@ RUN mvn clean package -DskipTests -pl financial-service -am
 FROM eclipse-temurin:11-jre-alpine
 WORKDIR /app
 COPY --from=build /app/financial-service/target/*.jar app.jar
+EXPOSE 8081
 ENTRYPOINT ["java","-jar","app.jar"]

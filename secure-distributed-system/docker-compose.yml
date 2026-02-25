@@ -11,6 +11,7 @@ services:
       - "8888:8888"
     environment:
       - SPRING_PROFILES_ACTIVE=native
+      - CONFIG_REPO_PATH=file:///config-repo
     volumes:
       - ./config-repo:/config-repo
     networks:

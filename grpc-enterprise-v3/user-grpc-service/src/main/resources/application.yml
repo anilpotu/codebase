@@ -1,9 +1,11 @@
 
 spring:
+  application:
+    name: user-grpc-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/grpcdb
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/grpcdb
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -27,5 +29,5 @@ resilience4j:
         waitDurationInOpenState: 10s
 
 jwt:
-  secret: enterpriseGrpcSecretKeyForJWT256bitMinimumLength!
+  secret: ${JWT_SECRET:enterpriseGrpcSecretKeyForJWT256bitMinimumLength!}
   expiration: 86400000

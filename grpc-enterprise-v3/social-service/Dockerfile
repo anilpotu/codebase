@@ -11,4 +11,5 @@ RUN mvn clean package -DskipTests -pl social-service -am
 FROM eclipse-temurin:11-jre-alpine
 WORKDIR /app
 COPY --from=build /app/social-service/target/*.jar app.jar
+EXPOSE 8083
 ENTRYPOINT ["java","-jar","app.jar"]

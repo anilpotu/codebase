@@ -11,4 +11,6 @@ RUN mvn clean package -DskipTests -pl user-grpc-service -am
 FROM eclipse-temurin:11-jre-alpine
 WORKDIR /app
 COPY --from=build /app/user-grpc-service/target/*.jar app.jar
+EXPOSE 8080
+EXPOSE 9090
 ENTRYPOINT ["java","-jar","app.jar"]
