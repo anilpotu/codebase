@@ -1,0 +1,80 @@
+spring:
+  application:
+    name: financial-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/financialdb
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,env,loggers,circuitbreakers
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      probes:
+        enabled: true
+    info:
+      enabled: true
+    loggers:
+      enabled: true
+  info:
+    env:
+      enabled: true
+    build:
+      enabled: true
+  health:
+    circuitbreakers:
+      enabled: true
+    db:
+      enabled: true
+    diskspace:
+      enabled: true
+
+info:
+  app:
+    name: financial-service
+    version: 3.0.0
+    description: User Financial Information REST Service
+
+logging:
+  level:
+    root: INFO
+    com.enterprise.financial: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: WARN
+    org.flywaydb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] %-5level %logger{36} - %msg%n"
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      financialService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+
+jwt:
+  secret: ${JWT_SECRET:enterpriseGrpcSecretKeyForJWT256bitMinimumLength!}
+  expiration: 86400000

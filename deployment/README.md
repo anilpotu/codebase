@@ -43,7 +43,7 @@ codebase/
 │   │   ├── 06-verify.sh                Health checks and rollout verification
 │   │   └── teardown.sh                 Remove Helm releases (+ optional infra destroy)
 │   └── environments/
-│       ├── dev/                        Dev override values for both charts
+│       ├── dev/                        Dev override values for all three charts
 │       ├── staging/                    Staging override values
 │       └── prod/                       Production override values
 │
@@ -72,6 +72,25 @@ codebase/
 │   ├── product-service/                Product catalog + Redis cache (port 8083)
 │   ├── Jenkinsfile
 │   └── .gitlab-ci.yml
+│
+├── userservice/                        Combined platform (grpc + Spring Cloud)
+│   ├── helm/                           Helm chart (umbrella + 12 sub-charts)
+│   ├── terraform/                      AWS infrastructure (EKS, RDS, ECR, ElastiCache)
+│   ├── config-repo/                    Spring Cloud Config repo (9 YAML files)
+│   ├── config-server/                  Spring Cloud Config (port 8888)
+│   ├── eureka-server/                  Netflix Eureka (port 8761)
+│   ├── api-gateway/                    Spring Cloud Gateway (port 8000)
+│   ├── auth-service/                   JWT auth (port 8080)
+│   ├── user-service/                   User CRUD (port 8081)
+│   ├── order-service/                  Order management (port 8082)
+│   ├── product-service/                Product catalog + Redis cache (port 8083)
+│   ├── user-grpc-service/              gRPC user service (REST :8090 / gRPC :9090)
+│   ├── financial-service/              Financial service (port 8084)
+│   ├── health-service/                 Health records service (port 8085)
+│   ├── social-service/                 Social platform service (port 8086)
+│   ├── enterprise-ui/                  React 18 frontend (port 80)
+│   ├── docker-compose.yml
+│   └── README.md
 │
 ├── docker-build-push.sh                Root-level Docker build helper
 └── .gitlab-ci.yml                      Monorepo trigger pipeline
@@ -148,13 +167,58 @@ Shared infrastructure:
 
 ---
 
+### Project 3 — userservice
+
+A unified platform that merges both stacks. The 4 gRPC enterprise services are integrated into Spring Cloud infrastructure (Config Server + Eureka) from Project 2, all traffic is routed through a single Spring Cloud Gateway, and the React UI is updated to call only the gateway.
+
+```
+Internet
+    │
+    ▼
+Istio Ingress Gateway  (ports 80/443)
+    │
+    ▼
+api-gateway  :8000  (Spring Cloud Gateway, Redis rate-limiting)
+    │
+    ├── /api/auth           ──► auth-service        :8080  (JWT issuance/validation)
+    ├── /api/users          ──► user-service         :8081  (User CRUD)
+    ├── /api/orders         ──► order-service        :8082  (Order management)
+    ├── /api/products       ──► product-service      :8083  (Product catalog + Redis)
+    ├── /api/grpc-users     ──► user-grpc-service    :8090  (gRPC users, REST+gRPC :9090)
+    ├── /api/accounts       ──► financial-service    :8084  (Financial records)
+    ├── /api/health-records ──► health-service       :8085  (Health records)
+    └── /api/profiles       ──► social-service       :8086  (Social platform)
+
+All 12 services register with:
+    eureka-server  :8761  (Netflix Eureka — service discovery)
+
+All 12 services fetch config from:
+    config-server  :8888  (Spring Cloud Config — reads config-repo/)
+
+Shared infrastructure:
+    Redis  :6379  (rate limiting for api-gateway, caching for product-service)
+    PostgreSQL (RDS)  (per-service databases: userdb, orderdb, productdb,
+                       grpcdb, financialdb, healthdb, socialdb)
+
+Frontend:
+    enterprise-ui  :80  (React 18 SPA, nginx proxies /api/ → api-gateway:8000)
+```
+
+**Tech stack:** Java 11, Spring Boot 2.7.18, Spring Cloud 2021.0.8, Eureka, Spring Cloud Config, JWT (dual-secret), gRPC 1.58, Redis, Istio mTLS, Resilience4j, Prometheus, React 18
+
+**EKS cluster:** `userservice-eks` | **Namespace:** `userservice`
+
+**Terraform backend:** S3 bucket `userservice-tfstate`, DynamoDB table `userservice-tflock`
+
+---
+
 ## 3. Prerequisites
 
 Install all tools before proceeding:
 
 | Tool | Version | Install |
 |---|---|---|
-| Java | 8 (sds) / 11 (grpc) | `sdk install java` or OS package manager |
+| Java | 8 (sds) / 11 (grpc, us) | `sdk install java` or OS package manager |
 | Maven | 3.8+ | `sdk install maven` |
 | Docker | 24+ | https://docs.docker.com/get-docker/ |
 | AWS CLI | 2.x | `pip install awscli` or https://aws.amazon.com/cli/ |
@@ -219,6 +283,11 @@ cd /path/to/codebase
 
 # Build without tests (faster)
 ./deployment/scripts/01-build.sh skip-tests
+
+# Build a specific project only
+./deployment/scripts/01-build.sh skip-tests grpc   # grpc-enterprise-v3
+./deployment/scripts/01-build.sh skip-tests sds    # secure-distributed-system
+./deployment/scripts/01-build.sh skip-tests us     # userservice
 ```
 
 ### Build individually
@@ -231,6 +300,13 @@ mvn clean package --batch-mode
 # secure-distributed-system (requires Java 8)
 cd secure-distributed-system
 mvn clean package --batch-mode -DskipTests
+
+# userservice (requires Java 11 — combined project)
+cd userservice
+mvn clean package --batch-mode -DskipTests
+# Note: SDS-origin services use single-stage Dockerfiles (pre-built JARs).
+# gRPC-origin services use multi-stage Dockerfiles (Maven inside Docker).
+# Run this Maven build before building Docker images for SDS-origin services.
 ```
 
 **Expected output:** JAR files in `<service>/target/<service>-*.jar` for each module.
@@ -242,7 +318,7 @@ mvn clean package --batch-mode -DskipTests
 ### Using the deployment script
 
 ```bash
-# Push all 12 images to Docker Hub (anilpotu/*)
+# Push all images for all three projects
 ./deployment/scripts/02-docker-push.sh anilpotu latest all
 
 # Push to ECR with a specific tag
@@ -251,33 +327,62 @@ mvn clean package --batch-mode -DskipTests
   "build-42" \
   all
 
-# Build only grpc-enterprise-v3 images
+# Build only grpc-enterprise-v3 images (5 images)
 ./deployment/scripts/02-docker-push.sh anilpotu latest grpc
 
-# Build only secure-distributed-system images
+# Build only secure-distributed-system images (7 images)
 ./deployment/scripts/02-docker-push.sh anilpotu latest sds
+
+# Build only userservice images (13 images)
+./deployment/scripts/02-docker-push.sh anilpotu latest us
 ```
 
 ### Docker image inventory
 
-| Image | Base image | Dockerfile | Project |
+**grpc-enterprise-v3 (project: `grpc`)**
+
+| Image | Base image | Dockerfile | Build strategy |
 |---|---|---|---|
-| `user-grpc-service` | `eclipse-temurin:11-jre-alpine` | grpc-enterprise-v3/user-grpc-service/Dockerfile | grpc |
-| `financial-service` | `eclipse-temurin:11-jre-alpine` | grpc-enterprise-v3/financial-service/Dockerfile | grpc |
-| `health-service` | `eclipse-temurin:11-jre-alpine` | grpc-enterprise-v3/health-service/Dockerfile | grpc |
-| `social-service` | `eclipse-temurin:11-jre-alpine` | grpc-enterprise-v3/social-service/Dockerfile | grpc |
-| `enterprise-ui` | `nginx:alpine` | grpc-enterprise-v3/enterprise-ui/Dockerfile | grpc |
-| `config-server` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/config-server/Dockerfile | sds |
-| `eureka-server` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/eureka-server/Dockerfile | sds |
-| `api-gateway` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/api-gateway/Dockerfile | sds |
-| `auth-service` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/auth-service/Dockerfile | sds |
-| `user-service` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/user-service/Dockerfile | sds |
-| `order-service` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/order-service/Dockerfile | sds |
-| `product-service` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/product-service/Dockerfile | sds |
+| `user-grpc-service` | `eclipse-temurin:11-jre-alpine` | grpc-enterprise-v3/user-grpc-service/Dockerfile | Multi-stage Maven |
+| `financial-service` | `eclipse-temurin:11-jre-alpine` | grpc-enterprise-v3/financial-service/Dockerfile | Multi-stage Maven |
+| `health-service` | `eclipse-temurin:11-jre-alpine` | grpc-enterprise-v3/health-service/Dockerfile | Multi-stage Maven |
+| `social-service` | `eclipse-temurin:11-jre-alpine` | grpc-enterprise-v3/social-service/Dockerfile | Multi-stage Maven |
+| `enterprise-ui` | `nginx:alpine` | grpc-enterprise-v3/enterprise-ui/Dockerfile | Node build |
+
+**secure-distributed-system (project: `sds`)**
+
+| Image | Base image | Dockerfile | Build strategy |
+|---|---|---|---|
+| `config-server` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/config-server/Dockerfile | Single-stage (pre-built JAR) |
+| `eureka-server` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/eureka-server/Dockerfile | Single-stage (pre-built JAR) |
+| `api-gateway` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/api-gateway/Dockerfile | Single-stage (pre-built JAR) |
+| `auth-service` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/auth-service/Dockerfile | Single-stage (pre-built JAR) |
+| `user-service` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/user-service/Dockerfile | Single-stage (pre-built JAR) |
+| `order-service` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/order-service/Dockerfile | Single-stage (pre-built JAR) |
+| `product-service` | `eclipse-temurin:8-jdk-alpine` | secure-distributed-system/product-service/Dockerfile | Single-stage (pre-built JAR) |
+
+**userservice (project: `us`) — 13 images, mixed build strategy**
+
+| Image | Base image | Dockerfile | Build strategy |
+|---|---|---|---|
+| `us-config-server` | `eclipse-temurin:8-jdk-alpine` | userservice/config-server/Dockerfile | Single-stage (pre-built JAR) |
+| `us-eureka-server` | `eclipse-temurin:8-jdk-alpine` | userservice/eureka-server/Dockerfile | Single-stage (pre-built JAR) |
+| `us-api-gateway` | `eclipse-temurin:8-jdk-alpine` | userservice/api-gateway/Dockerfile | Single-stage (pre-built JAR) |
+| `us-auth-service` | `eclipse-temurin:8-jdk-alpine` | userservice/auth-service/Dockerfile | Single-stage (pre-built JAR) |
+| `us-user-service` | `eclipse-temurin:8-jdk-alpine` | userservice/user-service/Dockerfile | Single-stage (pre-built JAR) |
+| `us-order-service` | `eclipse-temurin:8-jdk-alpine` | userservice/order-service/Dockerfile | Single-stage (pre-built JAR) |
+| `us-product-service` | `eclipse-temurin:8-jdk-alpine` | userservice/product-service/Dockerfile | Single-stage (pre-built JAR) |
+| `us-user-grpc-service` | `eclipse-temurin:11-jre-alpine` | userservice/user-grpc-service/Dockerfile | Multi-stage Maven |
+| `us-financial-service` | `eclipse-temurin:11-jre-alpine` | userservice/financial-service/Dockerfile | Multi-stage Maven |
+| `us-health-service` | `eclipse-temurin:11-jre-alpine` | userservice/health-service/Dockerfile | Multi-stage Maven |
+| `us-social-service` | `eclipse-temurin:11-jre-alpine` | userservice/social-service/Dockerfile | Multi-stage Maven |
+| `us-enterprise-ui` | `nginx:alpine` | userservice/enterprise-ui/Dockerfile | Node build |
 
 > **grpc-enterprise-v3 build note:** All 4 service Dockerfiles use a multi-stage Maven build with the parent `grpc-enterprise-v3/` directory as the Docker build context. Each Dockerfile copies all sibling module `pom.xml` files before the `mvn` step so Maven can resolve the full multi-module parent POM.
 >
 > **secure-distributed-system build note:** These Dockerfiles are single-stage — they copy a pre-built JAR from `target/` (produced by `01-build.sh`). Run the Maven build first before building Docker images.
+>
+> **userservice build note:** Mixed strategy — SDS-origin services (config-server, eureka-server, api-gateway, auth-service, user-service, order-service, product-service) use single-stage Dockerfiles requiring pre-built JARs from `mvn package`. gRPC-origin services (user-grpc-service, financial-service, health-service, social-service) use multi-stage Dockerfiles with the `userservice/` root as build context, building with Maven inside Docker. Run `mvn clean package -DskipTests` in `userservice/` before calling `02-docker-push.sh us`.
 
 ### ECR login (if using ECR)
 
@@ -301,8 +406,9 @@ Each project has its own Terraform configuration under `<project>/terraform/`. B
 |---|---|---|
 | grpc-enterprise-v3 | `grpc-enterprise-v3-tfstate` | `grpc-enterprise-v3-tflock` |
 | secure-distributed-system | `secure-distributed-tfstate` | `terraform-locks` |
+| userservice | `userservice-tfstate` | `userservice-tflock` |
 
-> **Before first run:** Create the S3 buckets and DynamoDB tables manually, or with a bootstrapping script. Both buckets must have versioning and server-side encryption enabled.
+> **Before first run:** Create the S3 buckets and DynamoDB tables manually, or with a bootstrapping script. All buckets must have versioning and server-side encryption enabled.
 
 ### Provision grpc-enterprise-v3
 
@@ -325,7 +431,15 @@ TF_VAR_db_password="$DB_PASSWORD" ./deployment/scripts/03-terraform.sh grpc appl
 TF_VAR_db_password="$DB_PASSWORD" ./deployment/scripts/03-terraform.sh sds apply production
 ```
 
-### Provision both
+### Provision userservice
+
+```bash
+./deployment/scripts/03-terraform.sh us init
+./deployment/scripts/03-terraform.sh us plan production
+TF_VAR_db_password="$DB_PASSWORD" ./deployment/scripts/03-terraform.sh us apply production
+```
+
+### Provision all
 
 ```bash
 ./deployment/scripts/03-terraform.sh all apply production
@@ -377,7 +491,10 @@ export JWT_SECRET="your-jwt-secret-at-least-32-chars"
 # Setup secure-distributed-system
 ./deployment/scripts/04-k8s-setup.sh sds
 
-# Setup both
+# Setup userservice
+./deployment/scripts/04-k8s-setup.sh us
+
+# Setup all
 ./deployment/scripts/04-k8s-setup.sh all
 ```
 
@@ -390,6 +507,16 @@ export JWT_SECRET="your-jwt-secret-at-least-32-chars"
 **secure-distributed-system (`secure-distributed` namespace):**
 - Namespace with `istio-injection: enabled`
 - Secret: `app-secrets` (jwt-secret, config-user, config-password, eureka-user, eureka-password)
+
+**userservice (`userservice` namespace):**
+- Namespace with `istio-injection: enabled`
+- Secrets:
+  - `userservice-db-secret` (username, password) — used by auth-service, user-service, order-service, product-service, user-grpc-service
+  - `financial-service-db-secret` (username, password) — financial-service
+  - `health-service-db-secret` (username, password) — health-service
+  - `social-service-db-secret` (username, password) — social-service
+  - `app-secrets` (jwt-secret, config-user, config-password, eureka-user, eureka-password) — SDS-origin services
+  - `enterprise-jwt-secret` (jwt-secret) — gRPC-origin services
 
 ### Install Istio manually (if needed)
 
@@ -412,6 +539,7 @@ kubectl get pods -n istio-system
 Helm charts are located at:
 - `grpc-enterprise-v3/helm/` — umbrella chart with 4 service sub-charts
 - `secure-distributed-system/helm/` — umbrella chart with 8 service sub-charts
+- `userservice/helm/` — umbrella chart with 12 service sub-charts
 
 ### Quick deploy
 
@@ -422,7 +550,10 @@ Helm charts are located at:
 # Deploy secure-distributed-system to staging with a specific image tag
 ./deployment/scripts/05-helm-deploy.sh sds staging build-42
 
-# Deploy both to production
+# Deploy userservice to staging
+./deployment/scripts/05-helm-deploy.sh us staging build-42
+
+# Deploy all projects to production
 ./deployment/scripts/05-helm-deploy.sh all prod build-42
 ```
 
@@ -455,6 +586,27 @@ helm upgrade --install secure-distributed secure-distributed-system/helm/ \
   --set "order-service.image.tag=build-42" \
   --set "product-service.image.tag=build-42" \
   --timeout 15m \
+  --wait \
+  --atomic
+
+# userservice (all 12 services)
+helm upgrade --install userservice userservice/helm/ \
+  --namespace userservice \
+  --create-namespace \
+  --values deployment/environments/prod/userservice-values.yaml \
+  --set "config-server.image.tag=build-42" \
+  --set "eureka-server.image.tag=build-42" \
+  --set "api-gateway.image.tag=build-42" \
+  --set "auth-service.image.tag=build-42" \
+  --set "user-service.image.tag=build-42" \
+  --set "order-service.image.tag=build-42" \
+  --set "product-service.image.tag=build-42" \
+  --set "user-grpc-service.image.tag=build-42" \
+  --set "financial-service.image.tag=build-42" \
+  --set "health-service.image.tag=build-42" \
+  --set "social-service.image.tag=build-42" \
+  --set "enterprise-ui.image.tag=build-42" \
+  --timeout 20m \
   --wait \
   --atomic
 ```
@@ -512,6 +664,38 @@ charts/
   product-service/  — Deployment (with init container), Service, PDB
 ```
 
+**userservice/helm/**
+
+```
+Chart.yaml         — Umbrella chart (12 sub-chart dependencies)
+values.yaml        — Default values for all sub-charts
+templates/
+  namespace.yaml   — userservice namespace (istio-injection: enabled)
+  secrets.yaml     — app-secrets + enterprise-jwt-secret (toggle with secrets.create)
+  istio/
+    gateway.yaml                — Istio Gateway (api.userservice.example.com)
+    virtualservice.yaml         — VirtualService (all API routes → api-gateway)
+    destination-rules.yaml      — DestinationRules (mTLS, circuit breaking)
+    authorization-policies.yaml — AuthorizationPolicies (deny-all + per-service)
+    peer-authentication.yaml    — mTLS STRICT enforcement
+    rate-limiting.yaml          — EnvoyFilter rate limiters (per-service token bucket)
+    telemetry.yaml              — Jaeger tracing + Prometheus metrics
+charts/
+  config-server/         — Deployment, Service
+  eureka-server/         — Deployment (with init container), Service
+  redis/                 — Deployment, Service
+  api-gateway/           — Deployment (with init container), Service, PDB
+  auth-service/          — Deployment (with init container), Service, PDB
+  user-service/          — Deployment (with init container), Service, PDB
+  order-service/         — Deployment (with init container), Service, PDB
+  product-service/       — Deployment (with init container), Service, PDB
+  user-grpc-service/     — Deployment, Service (REST+gRPC ports), PDB
+  financial-service/     — Deployment, Service, PDB
+  health-service/        — Deployment, Service, PDB
+  social-service/        — Deployment, Service, PDB
+  enterprise-ui/         — Deployment, Service, PDB
+```
+
 ### Key Helm values
 
 #### grpc-enterprise-v3 — top-level values
@@ -546,6 +730,26 @@ charts/
 | `secrets.eurekaUser` | *(base64)* | Eureka username |
 | `secrets.eurekaPassword` | *(base64)* | Eureka password |
 | `istio.rateLimiting.apiGateway.maxTokens` | `200` | API gateway rate limit |
+
+#### userservice — top-level values
+
+| Key | Default | Description |
+|---|---|---|
+| `global.imageRegistry` | `""` | Registry prefix (empty = Docker Hub) |
+| `global.imagePullPolicy` | `IfNotPresent` | Image pull policy |
+| `global.istio.enabled` | `true` | Toggle all Istio resources |
+| `global.springProfile` | `docker` | Active Spring profile |
+| `secrets.create` | `true` | Create K8s Secrets from chart |
+| `istio.gateway.host` | `api.userservice.example.com` | Ingress hostname |
+| `istio.gateway.tlsCredentialName` | `userservice-tls-credential` | TLS secret name |
+| `istio.jwtIssuer` | `userservice` | JWT issuer claim |
+| `istio.tracing.samplingPercentage` | `100.0` | Jaeger sampling % |
+| `istio.rateLimiting.financial` | `100` | req/min for financial-service |
+| `istio.rateLimiting.health` | `200` | req/min for health-service |
+| `istio.rateLimiting.social` | `300` | req/min for social-service |
+| `istio.rateLimiting.grpcUsers` | `500` | req/min for user-grpc-service |
+| `user-grpc-service.replicaCount` | `3` | Replicas (primary gRPC service) |
+| `user-grpc-service.pdb.minAvailable` | `2` | PDB min available |
 
 ---
 
@@ -647,6 +851,7 @@ done
 # Verify individually
 ./deployment/scripts/06-verify.sh grpc
 ./deployment/scripts/06-verify.sh sds
+./deployment/scripts/06-verify.sh us
 ```
 
 ### Manual verification
@@ -655,32 +860,64 @@ done
 # Check pod status
 kubectl -n grpc-enterprise get pods -o wide
 kubectl -n secure-distributed get pods -o wide
+kubectl -n userservice get pods -o wide
 
 # Check services
 kubectl -n grpc-enterprise get svc
 kubectl -n secure-distributed get svc
+kubectl -n userservice get svc
 
 # Check Helm release status
 helm status grpc-enterprise -n grpc-enterprise
 helm status secure-distributed -n secure-distributed
+helm status userservice -n userservice
 
-# Health check a specific service
+# Health check a specific service (grpc project)
 kubectl -n grpc-enterprise exec deploy/financial-service -- \
   wget -qO- http://localhost:8081/actuator/health
 
+# Health check services (sds project)
 kubectl -n secure-distributed exec deploy/api-gateway -- \
   wget -qO- http://localhost:8000/actuator/health
 
-# Port-forward Eureka dashboard
+# Health check services (userservice project)
+kubectl -n userservice exec deploy/config-server -- \
+  wget -qO- http://localhost:8888/actuator/health
+kubectl -n userservice exec deploy/api-gateway -- \
+  wget -qO- http://localhost:8000/actuator/health
+kubectl -n userservice exec deploy/financial-service -- \
+  wget -qO- http://localhost:8084/actuator/health
+
+# Port-forward Eureka dashboard (sds or userservice)
 kubectl -n secure-distributed port-forward svc/eureka-server 8761:8761
+kubectl -n userservice port-forward svc/eureka-server 8761:8761
 # Open: http://localhost:8761
 
 # Check Istio sidecar injection
 kubectl -n grpc-enterprise get pods -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}'
+kubectl -n userservice get pods -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}'
 
 # View Istio proxy status
 istioctl proxy-status -n grpc-enterprise
+istioctl proxy-status -n userservice
 ```
+
+### userservice service port reference
+
+| Service | REST Port | gRPC Port | API Gateway path |
+|---|---|---|---|
+| config-server | 8888 | — | (internal) |
+| eureka-server | 8761 | — | (internal) |
+| api-gateway | 8000 | — | (entry point) |
+| auth-service | 8080 | — | `/api/auth/**` |
+| user-service | 8081 | — | `/api/users/**` |
+| order-service | 8082 | — | `/api/orders/**` |
+| product-service | 8083 | — | `/api/products/**` |
+| user-grpc-service | 8090 | 9090 | `/api/grpc-users/**` |
+| financial-service | 8084 | — | `/api/accounts/**`, `/api/transactions/**` |
+| health-service | 8085 | — | `/api/health-records/**`, `/api/vitals/**` |
+| social-service | 8086 | — | `/api/profiles/**`, `/api/posts/**`, `/api/connections/**` |
+| enterprise-ui | 80 | — | (frontend) |
 
 ---
 
@@ -817,6 +1054,7 @@ Kubernetes-native Jenkins pipeline (`agent { kubernetes { ... } }`) with dedicat
 helm list -A                                        # all namespaces
 helm list -n grpc-enterprise
 helm list -n secure-distributed
+helm list -n userservice
 ```
 
 ### Upgrade with new image tag
@@ -838,14 +1076,38 @@ helm upgrade secure-distributed secure-distributed-system/helm/ \
   --reuse-values \
   --set "api-gateway.image.tag=build-99" \
   --wait --atomic
+
+# userservice (update all 12 service images)
+helm upgrade userservice userservice/helm/ \
+  -n userservice \
+  --reuse-values \
+  --set "config-server.image.tag=build-99" \
+  --set "eureka-server.image.tag=build-99" \
+  --set "api-gateway.image.tag=build-99" \
+  --set "auth-service.image.tag=build-99" \
+  --set "user-service.image.tag=build-99" \
+  --set "order-service.image.tag=build-99" \
+  --set "product-service.image.tag=build-99" \
+  --set "user-grpc-service.image.tag=build-99" \
+  --set "financial-service.image.tag=build-99" \
+  --set "health-service.image.tag=build-99" \
+  --set "social-service.image.tag=build-99" \
+  --set "enterprise-ui.image.tag=build-99" \
+  --wait --atomic
 ```
 
 ### Scale a service
 
 ```bash
-# Scale financial-service to 3 replicas via Helm
+# Scale financial-service to 3 replicas via Helm (grpc project)
 helm upgrade grpc-enterprise grpc-enterprise-v3/helm/ \
   -n grpc-enterprise \
+  --reuse-values \
+  --set "financial-service.replicaCount=3"
+
+# Scale financial-service to 3 replicas (userservice project)
+helm upgrade userservice userservice/helm/ \
+  -n userservice \
   --reuse-values \
   --set "financial-service.replicaCount=3"
 ```
@@ -858,6 +1120,9 @@ helm template grpc-release grpc-enterprise-v3/helm/ \
 
 helm template sds-release secure-distributed-system/helm/ \
   --values deployment/environments/prod/secure-distributed-values.yaml
+
+helm template us-release userservice/helm/ \
+  --values deployment/environments/prod/userservice-values.yaml
 ```
 
 ### Lint charts
@@ -865,6 +1130,7 @@ helm template sds-release secure-distributed-system/helm/ \
 ```bash
 helm lint grpc-enterprise-v3/helm/
 helm lint secure-distributed-system/helm/
+helm lint userservice/helm/
 ```
 
 ### Diff a pending upgrade (requires helm-diff plugin)
@@ -876,6 +1142,11 @@ helm diff upgrade grpc-enterprise grpc-enterprise-v3/helm/ \
   -n grpc-enterprise \
   --values deployment/environments/prod/grpc-enterprise-values.yaml \
   --set "financial-service.image.tag=build-99"
+
+helm diff upgrade userservice userservice/helm/ \
+  -n userservice \
+  --values deployment/environments/prod/userservice-values.yaml \
+  --set "financial-service.image.tag=build-99"
 ```
 
 ### Rollback
@@ -883,12 +1154,15 @@ helm diff upgrade grpc-enterprise grpc-enterprise-v3/helm/ \
 ```bash
 # View history
 helm history grpc-enterprise -n grpc-enterprise
+helm history userservice -n userservice
 
 # Rollback to previous revision
 helm rollback grpc-enterprise -n grpc-enterprise
+helm rollback userservice -n userservice
 
 # Rollback to specific revision
 helm rollback grpc-enterprise 3 -n grpc-enterprise --wait
+helm rollback userservice 3 -n userservice --wait
 ```
 
 ---
@@ -912,6 +1186,20 @@ helm rollback grpc-enterprise 3 -n grpc-enterprise --wait
 |---|---|---|---|
 | `app-secrets` | `secure-distributed` | `jwt-secret`, `config-user`, `config-password`, `eureka-user`, `eureka-password` | all services |
 | `secure-distributed-tls` | `istio-system` | TLS cert+key | Istio Gateway |
+
+### userservice
+
+| Secret Name | Namespace | Keys | Used by |
+|---|---|---|---|
+| `userservice-db-secret` | `userservice` | `username`, `password` | auth-service, user-service, order-service, product-service, user-grpc-service |
+| `financial-service-db-secret` | `userservice` | `username`, `password` | financial-service |
+| `health-service-db-secret` | `userservice` | `username`, `password` | health-service |
+| `social-service-db-secret` | `userservice` | `username`, `password` | social-service |
+| `app-secrets` | `userservice` | `jwt-secret`, `config-user`, `config-password`, `eureka-user`, `eureka-password` | SDS-origin services (config-server, eureka, gateway, auth, user, order, product) |
+| `enterprise-jwt-secret` | `userservice` | `jwt-secret` | gRPC-origin services (user-grpc-service, financial, health, social) |
+| `userservice-tls-credential` | `istio-system` | TLS cert+key | Istio Gateway |
+
+> **Dual JWT architecture:** SDS-origin services and gRPC-origin services each use their own JWT signing secret. The API Gateway passes JWTs through without validating them — each downstream service validates its own JWT. This allows both groups to coexist under a single gateway.
 
 ### Create TLS secret for Istio Gateway
 
@@ -951,21 +1239,25 @@ helm install external-secrets external-secrets/external-secrets \
 |---|---|
 | `deployment/environments/dev/grpc-enterprise-values.yaml` | Dev: 1 replica, no PDB, no Istio, reduced resources |
 | `deployment/environments/dev/secure-distributed-values.yaml` | Dev: 1 replica, no PDB, no Istio, reduced resources |
+| `deployment/environments/dev/userservice-values.yaml` | Dev: 1 replica all services, no PDB, no Istio, secrets.create=true |
 | `deployment/environments/staging/grpc-enterprise-values.yaml` | Staging: 2 replicas, PDB, Istio, staging hostnames |
 | `deployment/environments/staging/secure-distributed-values.yaml` | Staging: 2 replicas, PDB, Istio |
+| `deployment/environments/staging/userservice-values.yaml` | Staging: 2 replicas, PDB, Istio, ECR registry, secrets.create=false |
 | `deployment/environments/prod/grpc-enterprise-values.yaml` | Prod: 3/2 replicas, PDB, Istio, 10% tracing |
 | `deployment/environments/prod/secure-distributed-values.yaml` | Prod: 2 replicas, PDB, Istio, external secrets |
+| `deployment/environments/prod/userservice-values.yaml` | Prod: 3 replicas (user-grpc), 2 all others, PDB, Istio, 10% tracing |
 
 ### Key environment differences
 
 | Setting | dev | staging | prod |
 |---|---|---|---|
 | `global.istio.enabled` | `false` | `true` | `true` |
-| `secrets.create` (sds) | `true` | `false` | `false` |
+| `secrets.create` | `true` | `false` | `false` |
 | Replica count | `1` | `2` | `2–3` |
 | PDB enabled | `false` | `true` | `true` |
-| `springProfile` (sds) | `dev` | `staging` | `prod` |
+| `springProfile` (sds/us) | `dev` | `staging` | `prod` |
 | Tracing sampling | N/A | 100% | 10% |
+| `global.imageRegistry` | `""` | ECR endpoint | ECR endpoint |
 
 ---
 
@@ -1022,13 +1314,16 @@ kubectl port-forward -n istio-system svc/tracing 16686:80
 # View revision history
 helm history grpc-enterprise -n grpc-enterprise
 helm history secure-distributed -n secure-distributed
+helm history userservice -n userservice
 
 # Rollback to previous revision
 helm rollback grpc-enterprise -n grpc-enterprise --wait
 helm rollback secure-distributed -n secure-distributed --wait
+helm rollback userservice -n userservice --wait
 
 # Rollback to specific revision number
 helm rollback grpc-enterprise 3 -n grpc-enterprise --wait
+helm rollback userservice 3 -n userservice --wait
 ```
 
 ### kubectl rollback (raw manifests approach)
@@ -1036,24 +1331,33 @@ helm rollback grpc-enterprise 3 -n grpc-enterprise --wait
 ```bash
 # View rollout history
 kubectl rollout history deployment/financial-service -n grpc-enterprise
+kubectl rollout history deployment/financial-service -n userservice
 
 # Rollback to previous version
 kubectl rollout undo deployment/financial-service -n grpc-enterprise
+kubectl rollout undo deployment/financial-service -n userservice
 
 # Rollback to specific revision
 kubectl rollout undo deployment/financial-service \
   --to-revision=2 -n grpc-enterprise
+kubectl rollout undo deployment/financial-service \
+  --to-revision=2 -n userservice
 ```
 
 ### Image-specific rollback
 
 ```bash
-# Set a specific image tag directly
+# Set a specific image tag directly (sds project)
 kubectl set image deployment/api-gateway \
   api-gateway=123456789.dkr.ecr.us-east-1.amazonaws.com/api-gateway:build-40 \
   -n secure-distributed
-
 kubectl rollout status deployment/api-gateway -n secure-distributed
+
+# Set a specific image tag directly (userservice project)
+kubectl set image deployment/financial-service \
+  financial-service=123456789.dkr.ecr.us-east-1.amazonaws.com/us-financial-service:build-40 \
+  -n userservice
+kubectl rollout status deployment/financial-service -n userservice
 ```
 
 ---
@@ -1069,7 +1373,10 @@ kubectl rollout status deployment/api-gateway -n secure-distributed
 # Remove secure-distributed-system release and namespace
 ./deployment/scripts/teardown.sh sds
 
-# Remove both
+# Remove userservice release and namespace
+./deployment/scripts/teardown.sh us
+
+# Remove all three
 ./deployment/scripts/teardown.sh all
 ```
 
@@ -1079,6 +1386,9 @@ kubectl rollout status deployment/api-gateway -n secure-distributed
 # WARNING: Destroys EKS, RDS, VPC, ECR repositories, etc.
 # Requires double confirmation per project.
 ./deployment/scripts/teardown.sh all --destroy-infra
+
+# Destroy only userservice infrastructure
+./deployment/scripts/teardown.sh us --destroy-infra
 ```
 
 ### Manual Terraform destroy
@@ -1088,6 +1398,9 @@ cd grpc-enterprise-v3/terraform
 terraform destroy -auto-approve
 
 cd secure-distributed-system/terraform
+terraform destroy -auto-approve
+
+cd userservice/terraform
 terraform destroy -auto-approve
 ```
 
@@ -1251,4 +1564,32 @@ export DB_PASSWORD="..." JWT_SECRET="..."
 
 # 6. Verify
 ./deployment/scripts/06-verify.sh sds
+```
+
+### Full deployment from scratch (userservice)
+
+```bash
+# 1. Build (Java 11 required; builds all 12 Maven modules)
+./deployment/scripts/01-build.sh skip-tests us
+# Note: SDS-origin Dockerfiles need pre-built JARs; gRPC-origin Dockerfiles
+#       run Maven inside Docker — both strategies work via 02-docker-push.sh.
+
+# 2. Push all 13 images (mixed build strategy handled automatically)
+./deployment/scripts/02-docker-push.sh \
+  "$(aws sts get-caller-identity --query Account --output text).dkr.ecr.us-east-1.amazonaws.com" \
+  "$(git rev-parse --short HEAD)" \
+  us
+
+# 3. Provision infrastructure
+./deployment/scripts/03-terraform.sh us apply production
+
+# 4. Setup K8s (creates namespace, 6 secrets)
+export DB_PASSWORD="..." JWT_SECRET="..."
+./deployment/scripts/04-k8s-setup.sh us
+
+# 5. Deploy with Helm (20m timeout for 12 services)
+./deployment/scripts/05-helm-deploy.sh us prod "$(git rev-parse --short HEAD)"
+
+# 6. Verify (health checks: config:8888, eureka:8761, gw:8000, all business services)
+./deployment/scripts/06-verify.sh us
 ```

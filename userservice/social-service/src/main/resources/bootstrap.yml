@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: social-service
+  cloud:
+    config:
+      uri: ${SPRING_CLOUD_CONFIG_URI:http://localhost:8888}
+      fail-fast: false
+      retry:
+        max-attempts: 3
+        initial-interval: 1000

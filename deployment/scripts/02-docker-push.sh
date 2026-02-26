@@ -8,11 +8,12 @@
 #               Docker Hub: "anilpotu"
 #               ECR:        "123456789.dkr.ecr.us-east-1.amazonaws.com"
 #   tag       Image tag (default: latest)
-#   project   Which project to build: "grpc" | "sds" | "all" (default: all)
+#   project   Which project to build: "grpc" | "sds" | "us" | "all" (default: all)
 #
 # Examples:
 #   ./scripts/02-docker-push.sh anilpotu latest all
 #   ./scripts/02-docker-push.sh 123456789.dkr.ecr.us-east-1.amazonaws.com build-42 grpc
+#   ./scripts/02-docker-push.sh anilpotu latest us
 # =============================================================================
 set -euo pipefail
 
@@ -70,6 +71,7 @@ build_grpc() {
 }
 
 # ── secure-distributed-system (7 images) ──────────────────────────────────────
+# Requires pre-built JARs: run 01-build.sh first
 build_sds() {
   echo ""
   echo -e "${YELLOW}═══ secure-distributed-system (7 images) ═══${NC}"
@@ -79,12 +81,42 @@ build_sds() {
   done
 }
 
+# ── userservice (13 images) ────────────────────────────────────────────────────
+# Mixed build strategy:
+#   SDS-origin services (7): single-stage Dockerfiles — require pre-built JARs
+#                            from 01-build.sh (build context = module directory)
+#   gRPC-origin services (4): multi-stage Dockerfiles — Maven runs inside Docker
+#                            (build context = userservice root)
+#   enterprise-ui (1): multi-stage Node build → Nginx
+build_us() {
+  echo ""
+  echo -e "${YELLOW}═══ userservice (13 images) ═══${NC}"
+  US_DIR="$REPO_ROOT/userservice"
+
+  # SDS-origin: single-stage, context = module dir (needs pre-built JAR from 01-build.sh)
+  log "SDS-origin services (single-stage, pre-built JARs required):"
+  for svc in config-server eureka-server api-gateway auth-service user-service order-service product-service; do
+    build_and_push "$svc" "$US_DIR/$svc" "$US_DIR/$svc/Dockerfile"
+  done
+
+  # gRPC-origin: multi-stage, Maven runs inside Docker, context = project root
+  log "gRPC-origin services (multi-stage, Maven inside Docker):"
+  for svc in user-grpc-service financial-service health-service social-service; do
+    build_and_push "$svc" "$US_DIR" "$US_DIR/$svc/Dockerfile"
+  done
+
+  # Frontend
+  log "Frontend:"
+  build_and_push "enterprise-ui" "$US_DIR/enterprise-ui"
+}
+
 # ── Main ───────────────────────────────────────────────────────────────────────
 case "$PROJECT" in
   grpc) build_grpc ;;
   sds)  build_sds  ;;
-  all)  build_grpc; build_sds ;;
-  *)    fail "Unknown project '$PROJECT'. Use: grpc | sds | all" ;;
+  us)   build_us   ;;
+  all)  build_grpc; build_sds; build_us ;;
+  *)    fail "Unknown project '$PROJECT'. Use: grpc | sds | us | all" ;;
 esac
 
 echo ""

@@ -1,0 +1,187 @@
+# =============================================================================
+# userservice  —  production environment overrides
+# =============================================================================
+
+global:
+  imageRegistry: "123456789.dkr.ecr.us-east-1.amazonaws.com"  # replace with real account ID
+  imagePullPolicy: Always
+  istio:
+    enabled: true
+  springProfile: prod
+
+secrets:
+  create: false   # Secrets pre-created via AWS Secrets Manager / external-secrets operator
+
+istio:
+  gateway:
+    host: api.userservice.example.com
+    tlsCredentialName: userservice-tls-credential
+  jwtIssuer: "userservice"
+  tracing:
+    provider: jaeger
+    samplingPercentage: 10.0   # 10% sampling in prod for cost control
+  rateLimiting:
+    apiGateway:
+      maxTokens: 500
+      fillInterval: 60s
+    financial: 100             # req/min
+    health: 200
+    social: 300
+    grpcUsers: 500
+
+# ── Infrastructure ────────────────────────────────────────────────────────────
+config-server:
+  replicaCount: 1              # Stateless config reader — 1 replica is standard
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+eureka-server:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+redis:
+  replicaCount: 1
+
+api-gateway:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ── Traditional microservices ─────────────────────────────────────────────────
+auth-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+user-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+order-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+product-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ── Enterprise gRPC services ──────────────────────────────────────────────────
+user-grpc-service:
+  replicaCount: 3              # Primary user service — 3 replicas for HA
+  pdb:
+    enabled: true
+    minAvailable: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+financial-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+health-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+social-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+# ── Frontend ──────────────────────────────────────────────────────────────────
+enterprise-ui:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi

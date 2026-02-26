@@ -13,7 +13,7 @@
 # =============================================================================
 set -euo pipefail
 
-PROJECT="${1:?Usage: $0 <grpc|sds|all> [--destroy-infra]}"
+PROJECT="${1:?Usage: $0 <grpc|sds|us|all> [--destroy-infra]}"
 DESTROY_INFRA="${2:-}"
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
@@ -65,12 +65,25 @@ destroy_terraform() {
   ok "Terraform destroy complete: $name"
 }
 
+uninstall_us() {
+  echo ""
+  warn "Uninstalling userservice Helm release..."
+  helm uninstall userservice --namespace userservice 2>/dev/null \
+    && ok "Release 'userservice' uninstalled" \
+    || warn "Release 'userservice' not found (already removed?)"
+
+  log "Deleting namespace userservice..."
+  kubectl delete namespace userservice --ignore-not-found
+  ok "Namespace userservice removed"
+}
+
 # ── Helm uninstall ────────────────────────────────────────────────────────────
 case "$PROJECT" in
   grpc) uninstall_grpc ;;
   sds)  uninstall_sds  ;;
-  all)  uninstall_grpc; uninstall_sds ;;
-  *)    fail "Unknown project '$PROJECT'. Use: grpc | sds | all" ;;
+  us)   uninstall_us   ;;
+  all)  uninstall_grpc; uninstall_sds; uninstall_us ;;
+  *)    fail "Unknown project '$PROJECT'. Use: grpc | sds | us | all" ;;
 esac
 
 # ── Terraform destroy (optional) ──────────────────────────────────────────────
@@ -80,9 +93,11 @@ if [[ "$DESTROY_INFRA" == "--destroy-infra" ]]; then
   case "$PROJECT" in
     grpc) destroy_terraform "grpc-enterprise-v3" "$REPO_ROOT/grpc-enterprise-v3/terraform" ;;
     sds)  destroy_terraform "secure-distributed-system" "$REPO_ROOT/secure-distributed-system/terraform" ;;
+    us)   destroy_terraform "userservice" "$REPO_ROOT/userservice/terraform" ;;
     all)
       destroy_terraform "grpc-enterprise-v3" "$REPO_ROOT/grpc-enterprise-v3/terraform"
       destroy_terraform "secure-distributed-system" "$REPO_ROOT/secure-distributed-system/terraform"
+      destroy_terraform "userservice" "$REPO_ROOT/userservice/terraform"
       ;;
   esac
 fi

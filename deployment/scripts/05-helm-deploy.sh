@@ -16,7 +16,7 @@
 # =============================================================================
 set -euo pipefail
 
-PROJECT="${1:?Usage: $0 <grpc|sds|all> <env> [tag] [action]}"
+PROJECT="${1:?Usage: $0 <grpc|sds|us|all> <env> [tag] [action]}"
 ENV="${2:?Usage: $0 <project> <env> [tag] [action]}"
 TAG="${3:-latest}"
 ACTION="${4:-upgrade --install}"
@@ -106,11 +106,55 @@ deploy_sds() {
   helm status "$RELEASE" --namespace "$NAMESPACE"
 }
 
+# ── Deploy userservice ────────────────────────────────────────────────────────
+deploy_us() {
+  echo ""
+  echo -e "${YELLOW}═══ Helm Deploy: userservice ($ENV, tag=$TAG) ═══${NC}"
+  CHART="$REPO_ROOT/userservice/helm"
+  VALUES_FILE="$VALUES_DIR/userservice-values.yaml"
+  RELEASE="userservice"
+  NAMESPACE="userservice"
+
+  [[ -f "$VALUES_FILE" ]] || fail "Values file not found: $VALUES_FILE"
+  [[ -d "$CHART" ]] || fail "Helm chart not found: $CHART (run 'helm create userservice/helm' to scaffold)"
+
+  log "Linting chart..."
+  helm lint "$CHART" -f "$VALUES_FILE"
+
+  log "Running $ACTION..."
+  # shellcheck disable=SC2086
+  helm $ACTION "$RELEASE" "$CHART" \
+    --namespace "$NAMESPACE" \
+    --create-namespace \
+    --values "$VALUES_FILE" \
+    --set "config-server.image.tag=$TAG" \
+    --set "eureka-server.image.tag=$TAG" \
+    --set "api-gateway.image.tag=$TAG" \
+    --set "auth-service.image.tag=$TAG" \
+    --set "user-service.image.tag=$TAG" \
+    --set "order-service.image.tag=$TAG" \
+    --set "product-service.image.tag=$TAG" \
+    --set "user-grpc-service.image.tag=$TAG" \
+    --set "financial-service.image.tag=$TAG" \
+    --set "health-service.image.tag=$TAG" \
+    --set "social-service.image.tag=$TAG" \
+    --set "enterprise-ui.image.tag=$TAG" \
+    --timeout 20m \
+    --wait \
+    --atomic
+
+  ok "userservice deployed (release: $RELEASE, namespace: $NAMESPACE)"
+  echo ""
+  log "Release status:"
+  helm status "$RELEASE" --namespace "$NAMESPACE"
+}
+
 case "$PROJECT" in
   grpc) deploy_grpc ;;
   sds)  deploy_sds  ;;
-  all)  deploy_grpc; deploy_sds ;;
-  *)    fail "Unknown project '$PROJECT'. Use: grpc | sds | all" ;;
+  us)   deploy_us   ;;
+  all)  deploy_grpc; deploy_sds; deploy_us ;;
+  *)    fail "Unknown project '$PROJECT'. Use: grpc | sds | us | all" ;;
 esac
 
 ok "Helm deployment complete. Proceed to 06-verify.sh"

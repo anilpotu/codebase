@@ -1,0 +1,56 @@
+# Common configuration for all microservices
+spring:
+  cloud:
+    config:
+      enabled: true
+      fail-fast: true
+      retry:
+        max-attempts: 6
+        initial-interval: 1000
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka:eureka@eureka-server:8761/eureka
+    registry-fetch-interval-seconds: 5
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 10
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,env,loggers,circuitbreakers
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      probes:
+        enabled: true
+    info:
+      enabled: true
+    loggers:
+      enabled: true
+  info:
+    env:
+      enabled: true
+    build:
+      enabled: true
+  health:
+    db:
+      enabled: true
+    diskspace:
+      enabled: true
+    redis:
+      enabled: true
+
+logging:
+  level:
+    com.secure: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN
+    org.flywaydb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] %-5level %logger{36} - %msg%n"

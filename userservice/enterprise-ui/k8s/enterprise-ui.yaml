@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enterprise-ui
+  labels:
+    app: enterprise-ui
+    version: v1
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: enterprise-ui
+  template:
+    metadata:
+      labels:
+        app: enterprise-ui
+        version: v1
+      annotations:
+        sidecar.istio.io/rewriteAppHTTPProbers: "true"
+    spec:
+      containers:
+        - name: ui
+          image: enterprise-ui:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: enterprise-ui
+  labels:
+    app: enterprise-ui
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+  selector:
+    app: enterprise-ui
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: enterprise-ui
+  namespace: grpc-enterprise
+spec:
+  hosts:
+    - "app.enterprise.example.com"
+  gateways:
+    - enterprise-gateway
+  http:
+    - route:
+        - destination:
+            host: enterprise-ui
+            port:
+              number: 80
+            subset: v1
+          weight: 100
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: enterprise-ui
+  namespace: grpc-enterprise
+spec:
+  host: enterprise-ui
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+    - name: v1
+      labels:
+        version: v1
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: enterprise-ui
+  labels:
+    app: enterprise-ui
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: enterprise-ui

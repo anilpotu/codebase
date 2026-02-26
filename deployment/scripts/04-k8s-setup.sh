@@ -21,7 +21,7 @@
 # =============================================================================
 set -euo pipefail
 
-PROJECT="${1:?Usage: $0 <grpc|sds|all>}"
+PROJECT="${1:?Usage: $0 <grpc|sds|us|all>}"
 AWS_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -118,11 +118,82 @@ setup_sds() {
   ok "Secret: app-secrets"
 }
 
+# ── userservice setup ─────────────────────────────────────────────────────────
+setup_us() {
+  echo ""
+  echo -e "${YELLOW}═══ userservice Kubernetes Setup ═══${NC}"
+  CLUSTER="userservice-eks"
+  NAMESPACE="userservice"
+
+  log "Updating kubeconfig for cluster: $CLUSTER"
+  aws eks update-kubeconfig --region "$AWS_REGION" --name "$CLUSTER"
+  ok "kubeconfig updated"
+
+  ensure_istio
+
+  log "Creating namespace: $NAMESPACE"
+  kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+  kubectl label namespace "$NAMESPACE" istio-injection=enabled --overwrite
+
+  log "Creating database secrets (per enterprise gRPC service)..."
+  # user-grpc-service → grpcdb
+  kubectl create secret generic userservice-db-secret \
+    --namespace "$NAMESPACE" \
+    --from-literal=username=postgres \
+    --from-literal=password="$DB_PASSWORD" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  ok "Secret: userservice-db-secret"
+
+  # financial-service → financialdb
+  kubectl create secret generic financial-service-db-secret \
+    --namespace "$NAMESPACE" \
+    --from-literal=username=postgres \
+    --from-literal=password="$DB_PASSWORD" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  ok "Secret: financial-service-db-secret"
+
+  # health-service → healthdb
+  kubectl create secret generic health-service-db-secret \
+    --namespace "$NAMESPACE" \
+    --from-literal=username=postgres \
+    --from-literal=password="$DB_PASSWORD" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  ok "Secret: health-service-db-secret"
+
+  # social-service → socialdb
+  kubectl create secret generic social-service-db-secret \
+    --namespace "$NAMESPACE" \
+    --from-literal=username=postgres \
+    --from-literal=password="$DB_PASSWORD" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  ok "Secret: social-service-db-secret"
+
+  log "Creating app-secrets (jwt, config, eureka credentials)..."
+  # SDS-origin services use this secret for Spring Cloud credentials
+  kubectl create secret generic app-secrets \
+    --namespace "$NAMESPACE" \
+    --from-literal=jwt-secret="$JWT_SECRET" \
+    --from-literal=config-user=config-user \
+    --from-literal=config-password=config-pass \
+    --from-literal=eureka-user=eureka \
+    --from-literal=eureka-password=eureka \
+    --dry-run=client -o yaml | kubectl apply -f -
+  ok "Secret: app-secrets"
+
+  log "Creating enterprise JWT secret (for gRPC origin services)..."
+  kubectl create secret generic enterprise-jwt-secret \
+    --namespace "$NAMESPACE" \
+    --from-literal=jwt-secret="$JWT_SECRET" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  ok "Secret: enterprise-jwt-secret"
+}
+
 case "$PROJECT" in
   grpc) setup_grpc ;;
   sds)  setup_sds  ;;
-  all)  setup_grpc; setup_sds ;;
-  *)    fail "Unknown project '$PROJECT'. Use: grpc | sds | all" ;;
+  us)   setup_us   ;;
+  all)  setup_grpc; setup_sds; setup_us ;;
+  *)    fail "Unknown project '$PROJECT'. Use: grpc | sds | us | all" ;;
 esac
 
 ok "Kubernetes pre-deployment setup complete. Proceed to 05-helm-deploy.sh"

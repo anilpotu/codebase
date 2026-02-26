@@ -1,0 +1,116 @@
+server:
+  port: 8000
+
+spring:
+  application:
+    name: api-gateway
+  redis:
+    host: redis
+    port: 6379
+  cloud:
+    gateway:
+      routes:
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=2
+
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=2
+
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - StripPrefix=2
+
+        - id: product-service
+          uri: lb://product-service
+          predicates:
+            - Path=/api/products/**
+          filters:
+            - StripPrefix=2
+
+        # gRPC Enterprise Service Routes
+        - id: user-grpc-service
+          uri: lb://user-grpc-service
+          predicates:
+            - Path=/api/grpc-users/**
+          filters:
+            - StripPrefix=2
+
+        - id: financial-service
+          uri: lb://financial-service
+          predicates:
+            - Path=/api/accounts/**,/api/transactions/**
+          filters:
+            - StripPrefix=2
+
+        - id: health-service
+          uri: lb://health-service
+          predicates:
+            - Path=/api/health-records/**,/api/vitals/**
+          filters:
+            - StripPrefix=2
+
+        - id: social-service
+          uri: lb://social-service
+          predicates:
+            - Path=/api/profiles/**,/api/posts/**,/api/connections/**
+          filters:
+            - StripPrefix=2
+
+        # OpenAPI Documentation Routes
+        - id: auth-service-api-docs
+          uri: lb://auth-service
+          predicates:
+            - Path=/v3/api-docs/auth-service
+          filters:
+            - RewritePath=/v3/api-docs/auth-service, /v3/api-docs
+
+        - id: user-service-api-docs
+          uri: lb://user-service
+          predicates:
+            - Path=/v3/api-docs/user-service
+          filters:
+            - RewritePath=/v3/api-docs/user-service, /v3/api-docs
+
+        - id: order-service-api-docs
+          uri: lb://order-service
+          predicates:
+            - Path=/v3/api-docs/order-service
+          filters:
+            - RewritePath=/v3/api-docs/order-service, /v3/api-docs
+
+        - id: product-service-api-docs
+          uri: lb://product-service
+          predicates:
+            - Path=/v3/api-docs/product-service
+          filters:
+            - RewritePath=/v3/api-docs/product-service, /v3/api-docs
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins:
+              - "http://localhost:3000"
+              - "http://localhost:4200"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowed-headers: "*"
+            allow-credentials: true
+            max-age: 3600
+
+jwt:
+  secret: mySecretKeyForJWTTokenGenerationAndValidation12345678901234567890

@@ -1,0 +1,174 @@
+# =============================================================================
+# userservice  —  dev environment overrides
+# Applied on top of userservice/helm/values.yaml
+#
+# Services:
+#   Infrastructure : config-server, eureka-server, api-gateway, redis
+#   Traditional    : auth-service, user-service, order-service, product-service
+#   Enterprise gRPC: user-grpc-service, financial-service, health-service, social-service
+#   Frontend       : enterprise-ui
+# =============================================================================
+
+global:
+  imageRegistry: ""            # Docker Hub (anilpotu/*)
+  imagePullPolicy: Always
+  istio:
+    enabled: false             # Istio typically not available in dev clusters
+  springProfile: dev
+
+secrets:
+  create: true
+  # Dev placeholder values — override at install time via --set or external secrets
+  jwtSecret: "ZGV2LWp3dC1zZWNyZXQ="           # base64("dev-jwt-secret")
+  configUser: "Y29uZmlnLXVzZXI="               # base64("config-user")
+  configPassword: "Y29uZmlnLXBhc3M="           # base64("config-pass")
+  eurekaUser: "ZXVyZWth"                        # base64("eureka")
+  eurekaPassword: "ZXVyZWth"                    # base64("eureka")
+  enterpriseJwtSecret: "ZGV2LWVudGVycHJpc2Utand0" # base64("dev-enterprise-jwt")
+
+# ── Infrastructure ────────────────────────────────────────────────────────────
+config-server:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
+eureka-server:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
+redis:
+  replicaCount: 1
+
+api-gateway:
+  replicaCount: 1
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
+# ── Traditional microservices (H2 in-memory) ──────────────────────────────────
+auth-service:
+  replicaCount: 1
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
+user-service:
+  replicaCount: 1
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
+order-service:
+  replicaCount: 1
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
+product-service:
+  replicaCount: 1
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
+# ── Enterprise gRPC services (PostgreSQL) ─────────────────────────────────────
+user-grpc-service:
+  replicaCount: 1
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+financial-service:
+  replicaCount: 1
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+health-service:
+  replicaCount: 1
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+social-service:
+  replicaCount: 1
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ── Frontend ──────────────────────────────────────────────────────────────────
+enterprise-ui:
+  replicaCount: 1
+  pdb:
+    enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

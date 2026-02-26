@@ -1,0 +1,4 @@
+logging:
+  level:
+    com.secure: INFO
+    org.springframework.security: WARN

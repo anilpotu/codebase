@@ -1,0 +1,307 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+  background: #f5f7fa;
+  color: #333;
+  line-height: 1.6;
+}
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Navbar */
+.navbar {
+  width: 220px;
+  background: #1a1a2e;
+  color: #fff;
+  padding: 20px 0;
+  position: fixed;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.navbar-brand {
+  font-size: 16px;
+  font-weight: 700;
+  padding: 0 20px 20px;
+  border-bottom: 1px solid #2a2a4a;
+  margin-bottom: 10px;
+}
+
+.navbar-links {
+  list-style: none;
+}
+
+.navbar-links li a {
+  display: block;
+  padding: 10px 20px;
+  color: #a0a0c0;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.navbar-links li a:hover {
+  background: #2a2a4a;
+  color: #fff;
+}
+
+.navbar-links li a.active {
+  background: #16213e;
+  color: #4fc3f7;
+  border-left: 3px solid #4fc3f7;
+}
+
+/* Main content */
+.main-content {
+  margin-left: 220px;
+  padding: 30px;
+  flex: 1;
+  max-width: 1100px;
+}
+
+.main-content h1 {
+  font-size: 24px;
+  margin-bottom: 8px;
+  color: #1a1a2e;
+}
+
+.main-content h2 {
+  font-size: 18px;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+/* Cards grid */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.card h3 {
+  font-size: 16px;
+  margin-bottom: 6px;
+}
+
+/* Sections */
+.section {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Forms */
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  min-width: 140px;
+}
+
+.form-group textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #4fc3f7;
+  box-shadow: 0 0 0 2px rgba(79, 195, 247, 0.2);
+}
+
+/* Buttons */
+.btn {
+  padding: 8px 20px;
+  background: #1a1a2e;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: #16213e;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  background: #d32f2f;
+}
+
+.btn-danger:hover {
+  background: #b71c1c;
+}
+
+.btn-success {
+  background: #2e7d32;
+}
+
+.btn-success:hover {
+  background: #1b5e20;
+}
+
+/* Tables */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.table th,
+.table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  background: #fafafa;
+}
+
+.table tr:hover {
+  background: #f8f9ff;
+}
+
+/* Result card */
+.result-card {
+  background: #f8f9ff;
+  border: 1px solid #e0e7ff;
+  border-radius: 6px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.result-card p {
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.result-card strong {
+  color: #555;
+  min-width: 120px;
+  display: inline-block;
+}
+
+/* Post cards */
+.post-card {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.post-card .post-content {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.post-card .post-meta {
+  font-size: 12px;
+  color: #888;
+}
+
+/* Status badges */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-pending {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.badge-accepted {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+/* Messages */
+.error {
+  background: #ffebee;
+  color: #c62828;
+  padding: 10px 14px;
+  border-radius: 4px;
+  margin: 10px 0;
+  font-size: 14px;
+}
+
+.success {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 10px 14px;
+  border-radius: 4px;
+  margin: 10px 0;
+  font-size: 14px;
+}
+
+.text-muted {
+  color: #888;
+  font-size: 13px;
+}
+
+.loading {
+  color: #666;
+  font-style: italic;
+  margin: 10px 0;
+}

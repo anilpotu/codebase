@@ -1,0 +1,144 @@
+# =============================================================================
+# userservice  —  staging environment overrides
+# =============================================================================
+
+global:
+  imageRegistry: "123456789.dkr.ecr.us-east-1.amazonaws.com"  # replace with real account
+  imagePullPolicy: Always
+  istio:
+    enabled: true
+  springProfile: staging
+
+secrets:
+  create: false   # Managed by external-secrets or pre-created in staging namespace
+
+istio:
+  gateway:
+    host: api-staging.userservice.example.com
+    tlsCredentialName: userservice-tls-staging
+  jwtIssuer: "userservice"
+  tracing:
+    provider: jaeger
+    samplingPercentage: 50.0
+
+# ── Infrastructure ────────────────────────────────────────────────────────────
+config-server:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 150m
+      memory: 256Mi
+    limits:
+      cpu: 400m
+      memory: 512Mi
+
+eureka-server:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 150m
+      memory: 256Mi
+    limits:
+      cpu: 400m
+      memory: 512Mi
+
+redis:
+  replicaCount: 1
+
+api-gateway:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 150m
+      memory: 256Mi
+    limits:
+      cpu: 400m
+      memory: 512Mi
+
+# ── Traditional microservices ─────────────────────────────────────────────────
+auth-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 150m
+      memory: 256Mi
+    limits:
+      cpu: 400m
+      memory: 512Mi
+
+user-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+order-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+product-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# ── Enterprise gRPC services ──────────────────────────────────────────────────
+user-grpc-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 384Mi
+    limits:
+      cpu: 800m
+      memory: 768Mi
+
+financial-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 384Mi
+    limits:
+      cpu: 800m
+      memory: 768Mi
+
+health-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+social-service:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# ── Frontend ──────────────────────────────────────────────────────────────────
+enterprise-ui:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
