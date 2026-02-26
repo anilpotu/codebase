@@ -1,5 +1,6 @@
 package com.enterprise.social.service;
 
+import com.enterprise.social.client.UserGrpcServiceClient;
 import com.enterprise.social.dto.*;
 import com.enterprise.social.entity.Connection;
 import com.enterprise.social.entity.Post;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -36,6 +38,9 @@ class SocialServiceTest {
     @Mock
     private ConnectionRepository connectionRepository;
 
+    @Mock
+    private UserGrpcServiceClient userGrpcServiceClient;
+
     @InjectMocks
     private SocialService socialService;
 
@@ -50,6 +55,7 @@ class SocialServiceTest {
         request.setLocation("NYC");
         request.setWebsite("https://example.com");
 
+        when(userGrpcServiceClient.getUserById(1L)).thenReturn(buildUserResponse(1L));
         when(profileRepository.findByUserId(1L)).thenReturn(Optional.empty());
 
         SocialProfile saved = buildProfile(10L, 1L, "John Doe", "Hello world", "NYC", "https://example.com");
@@ -79,6 +85,7 @@ class SocialServiceTest {
         request.setLocation("SF");
         request.setWebsite("https://new.com");
 
+        when(userGrpcServiceClient.getUserById(1L)).thenReturn(buildUserResponse(1L));
         when(profileRepository.findByUserId(1L)).thenReturn(Optional.of(existing));
 
         SocialProfile updated = buildProfile(10L, 1L, "New Name", "New bio", "SF", "https://new.com");
@@ -123,6 +130,7 @@ class SocialServiceTest {
         request.setUserId(1L);
         request.setContent("My first post");
 
+        when(userGrpcServiceClient.getUserById(1L)).thenReturn(buildUserResponse(1L));
         Post saved = buildPost(20L, 1L, "My first post");
         when(postRepository.save(any(Post.class))).thenReturn(saved);
 
@@ -160,6 +168,8 @@ class SocialServiceTest {
         request.setUserId(1L);
         request.setConnectedUserId(2L);
 
+        when(userGrpcServiceClient.getUserById(1L)).thenReturn(buildUserResponse(1L));
+        when(userGrpcServiceClient.getUserById(2L)).thenReturn(buildUserResponse(2L));
         Connection saved = buildConnection(30L, 1L, 2L, "PENDING");
         when(connectionRepository.save(any(Connection.class))).thenReturn(saved);
 
@@ -255,5 +265,9 @@ class SocialServiceTest {
         connection.setStatus(status);
         connection.setCreatedAt(LocalDateTime.now());
         return connection;
+    }
+
+    private ResponseEntity<GrpcUserDTO> buildUserResponse(Long userId) {
+        return ResponseEntity.ok(new GrpcUserDTO(userId, "User " + userId, "user" + userId + "@example.com"));
     }
 }

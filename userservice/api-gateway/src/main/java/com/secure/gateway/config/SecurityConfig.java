@@ -26,7 +26,16 @@ public class SecurityConfig {
             .csrf().disable()
             .authorizeExchange()
                 .pathMatchers("/actuator/health", "/actuator/info").permitAll()
-                .pathMatchers("/auth-service/**").permitAll()
+                // SDS auth endpoints
+                .pathMatchers("/api/auth/**").permitAll()
+                // Product public reads; product-service enforces auth on writes
+                .pathMatchers("/api/products/**").permitAll()
+                // gRPC-origin services — each service validates its own JWT
+                .pathMatchers("/api/grpc-users/**").permitAll()
+                .pathMatchers("/api/accounts/**", "/api/transactions/**").permitAll()
+                .pathMatchers("/api/health-records/**", "/api/vitals/**").permitAll()
+                .pathMatchers("/api/profiles/**", "/api/posts/**", "/api/connections/**").permitAll()
+                // OpenAPI / Swagger
                 .pathMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/webjars/**").permitAll()
                 .anyExchange().authenticated()
             .and()

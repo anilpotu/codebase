@@ -1,5 +1,6 @@
 package com.enterprise.social.service;
 
+import com.enterprise.social.client.UserGrpcServiceClient;
 import com.enterprise.social.dto.*;
 import com.enterprise.social.entity.Connection;
 import com.enterprise.social.entity.Post;
@@ -10,6 +11,7 @@ import com.enterprise.social.repository.SocialProfileRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,19 +26,23 @@ public class SocialService {
     private final SocialProfileRepository profileRepository;
     private final PostRepository postRepository;
     private final ConnectionRepository connectionRepository;
+    private final UserGrpcServiceClient userGrpcServiceClient;
 
     public SocialService(SocialProfileRepository profileRepository,
                          PostRepository postRepository,
-                         ConnectionRepository connectionRepository) {
+                         ConnectionRepository connectionRepository,
+                         UserGrpcServiceClient userGrpcServiceClient) {
         this.profileRepository = profileRepository;
         this.postRepository = postRepository;
         this.connectionRepository = connectionRepository;
+        this.userGrpcServiceClient = userGrpcServiceClient;
     }
 
     @Transactional
     @CircuitBreaker(name = "socialService")
     public SocialProfileDTO createOrUpdateProfile(CreateProfileRequest request) {
         log.info("Creating/updating profile for userId={}", request.getUserId());
+        validateUserExists(request.getUserId());
         SocialProfile profile = profileRepository.findByUserId(request.getUserId())
                 .orElse(new SocialProfile());
 
@@ -67,6 +73,7 @@ public class SocialService {
     @CircuitBreaker(name = "socialService")
     public PostDTO createPost(CreatePostRequest request) {
         log.info("Creating post for userId={}", request.getUserId());
+        validateUserExists(request.getUserId());
         Post post = new Post();
         post.setUserId(request.getUserId());
         post.setContent(request.getContent());
@@ -90,6 +97,8 @@ public class SocialService {
     @CircuitBreaker(name = "socialService")
     public ConnectionDTO sendConnectionRequest(CreateConnectionRequest request) {
         log.info("Sending connection request: userId={} -> connectedUserId={}", request.getUserId(), request.getConnectedUserId());
+        validateUserExists(request.getUserId());
+        validateUserExists(request.getConnectedUserId());
         Connection connection = new Connection();
         connection.setUserId(request.getUserId());
         connection.setConnectedUserId(request.getConnectedUserId());
@@ -177,5 +186,21 @@ public class SocialService {
                 connection.getStatus(),
                 connection.getCreatedAt()
         );
+    }
+
+    private void validateUserExists(Long userId) {
+        try {
+            ResponseEntity<GrpcUserDTO> userResponse = userGrpcServiceClient.getUserById(userId);
+            if (!userResponse.getStatusCode().is2xxSuccessful() || userResponse.getBody() == null) {
+                throw new RuntimeException("User not found with id: " + userId);
+            }
+            log.debug("User validated for social operation: userId={}, name={}",
+                    userId, userResponse.getBody().getName());
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to validate user userId={}: {}", userId, e.getMessage());
+            throw new RuntimeException("User validation failed: " + e.getMessage());
+        }
     }
 }

@@ -26,8 +26,8 @@ services:
   # Eureka Server - service registry
   eureka-server:
     build:
-      context: ./eureka-server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: eureka-server/Dockerfile
     container_name: eureka-server
     ports:
       - "8761:8761"
@@ -45,6 +45,28 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
+
+  # PostgreSQL — shared by user-grpc-service, financial-service, health-service, social-service
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_MULTIPLE_DATABASES=grpcdb,financialdb,healthdb,socialdb
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/postgres-init.sh:/docker-entrypoint-initdb.d/init.sh
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
 
   # Redis for Gateway rate limiting and Product caching
   redis:
@@ -66,8 +88,8 @@ services:
   # Auth Service - authentication and JWT
   auth-service:
     build:
-      context: ./auth-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: auth-service/Dockerfile
     container_name: auth-service
     ports:
       - "8080:8080"
@@ -164,10 +186,14 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:eureka@eureka-server:8761/eureka
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
     depends_on:
       eureka-server:
         condition: service_healthy
-      auth-service:
+      postgres:
         condition: service_healthy
     networks:
       - microservices-network
@@ -184,10 +210,14 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:eureka@eureka-server:8761/eureka
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
     depends_on:
       eureka-server:
         condition: service_healthy
-      auth-service:
+      postgres:
         condition: service_healthy
     networks:
       - microservices-network
@@ -204,10 +234,14 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:eureka@eureka-server:8761/eureka
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
     depends_on:
       eureka-server:
         condition: service_healthy
-      auth-service:
+      postgres:
         condition: service_healthy
     networks:
       - microservices-network
@@ -224,10 +258,14 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:eureka@eureka-server:8761/eureka
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
     depends_on:
       eureka-server:
         condition: service_healthy
-      auth-service:
+      postgres:
         condition: service_healthy
     networks:
       - microservices-network
@@ -280,3 +318,4 @@ networks:
 
 volumes:
   redis-data:
+  postgres-data:

@@ -1,7 +1,12 @@
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
+import ServiceHealthPage from './pages/ServiceHealthPage';
+import AuthPage from './pages/auth/AuthPage';
 import UsersPage from './pages/users/UsersPage';
+import UserProfilesPage from './pages/users/UserProfilesPage';
+import ProductsPage from './pages/product/ProductsPage';
+import OrdersPage from './pages/order/OrdersPage';
 import AccountsPage from './pages/financial/AccountsPage';
 import TransactionsPage from './pages/financial/TransactionsPage';
 import HealthRecordsPage from './pages/health/HealthRecordsPage';
@@ -15,7 +20,12 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<Dashboard />} />
-        <Route path="users" element={<UsersPage />} />
+        <Route path="service-health" element={<ServiceHealthPage />} />
+        <Route path="auth" element={<AuthPage />} />
+        <Route path="grpc-users" element={<UsersPage />} />
+        <Route path="users" element={<UserProfilesPage />} />
+        <Route path="products" element={<ProductsPage />} />
+        <Route path="orders" element={<OrdersPage />} />
         <Route path="accounts" element={<AccountsPage />} />
         <Route path="transactions" element={<TransactionsPage />} />
         <Route path="health-records" element={<HealthRecordsPage />} />

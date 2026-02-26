@@ -10,62 +10,60 @@ spring:
   cloud:
     gateway:
       routes:
+        # SDS Services — controllers at /auth/*, /users/*, etc.
+        # StripPrefix=1 removes only the leading /api segment.
         - id: auth-service
           uri: lb://auth-service
           predicates:
             - Path=/api/auth/**
           filters:
-            - StripPrefix=2
+            - StripPrefix=1
 
         - id: user-service
           uri: lb://user-service
           predicates:
             - Path=/api/users/**
           filters:
-            - StripPrefix=2
+            - StripPrefix=1
 
         - id: order-service
           uri: lb://order-service
           predicates:
             - Path=/api/orders/**
           filters:
-            - StripPrefix=2
+            - StripPrefix=1
 
         - id: product-service
           uri: lb://product-service
           predicates:
             - Path=/api/products/**
           filters:
-            - StripPrefix=2
+            - StripPrefix=1
 
-        # gRPC Enterprise Service Routes
+        # gRPC-origin Services — controllers already include /api/ prefix
+        # (e.g. /api/accounts/**, /api/health-records/**) so no stripping needed.
+        # user-grpc-service uses RewritePath to map /api/grpc-users/** → /api/users/**
         - id: user-grpc-service
           uri: lb://user-grpc-service
           predicates:
             - Path=/api/grpc-users/**
           filters:
-            - StripPrefix=2
+            - RewritePath=/api/grpc-users/(?<remaining>.*), /api/users/$\{remaining}
 
         - id: financial-service
           uri: lb://financial-service
           predicates:
             - Path=/api/accounts/**,/api/transactions/**
-          filters:
-            - StripPrefix=2
 
         - id: health-service
           uri: lb://health-service
           predicates:
             - Path=/api/health-records/**,/api/vitals/**
-          filters:
-            - StripPrefix=2
 
         - id: social-service
           uri: lb://social-service
           predicates:
             - Path=/api/profiles/**,/api/posts/**,/api/connections/**
-          filters:
-            - StripPrefix=2
 
         # OpenAPI Documentation Routes
         - id: auth-service-api-docs
@@ -106,6 +104,7 @@ spring:
               - GET
               - POST
               - PUT
+              - PATCH
               - DELETE
               - OPTIONS
             allowed-headers: "*"

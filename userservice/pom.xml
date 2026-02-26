@@ -53,7 +53,7 @@
         <grpc-spring-boot.version>2.15.0.RELEASE</grpc-spring-boot.version>
 
         <!-- Resilience4j -->
-        <resilience4j.version>1.7.1</resilience4j.version>
+        <resilience4j.version>1.7.0</resilience4j.version>
 
         <!-- Utilities -->
         <lombok.version>1.18.30</lombok.version>

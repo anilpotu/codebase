@@ -6,36 +6,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api/users': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/accounts': {
-        target: 'http://localhost:8081',
-        changeOrigin: true,
-      },
-      '/api/transactions': {
-        target: 'http://localhost:8081',
-        changeOrigin: true,
-      },
-      '/api/health-records': {
-        target: 'http://localhost:8082',
-        changeOrigin: true,
-      },
-      '/api/vitals': {
-        target: 'http://localhost:8082',
-        changeOrigin: true,
-      },
-      '/api/profiles': {
-        target: 'http://localhost:8083',
-        changeOrigin: true,
-      },
-      '/api/posts': {
-        target: 'http://localhost:8083',
-        changeOrigin: true,
-      },
-      '/api/connections': {
-        target: 'http://localhost:8083',
+      '/api': {
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
     },

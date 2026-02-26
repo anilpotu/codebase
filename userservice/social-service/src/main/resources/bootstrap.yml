@@ -4,6 +4,8 @@ spring:
   cloud:
     config:
       uri: ${SPRING_CLOUD_CONFIG_URI:http://localhost:8888}
+      username: ${SPRING_CLOUD_CONFIG_USERNAME:config-user}
+      password: ${SPRING_CLOUD_CONFIG_PASSWORD:config-pass}
       fail-fast: false
       retry:
         max-attempts: 3
