@@ -3,7 +3,9 @@ spring:
     name: order-service
   cloud:
     config:
-      uri: http://localhost:8888
+      uri: ${SPRING_CLOUD_CONFIG_URI:http://localhost:8888}
+      username: config-user
+      password: config-pass
       fail-fast: false
       retry:
         initial-interval: 1000

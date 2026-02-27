@@ -333,6 +333,27 @@ All external traffic enters through the **API Gateway** at `http://localhost:800
 
 ## Running with Docker Compose
 
+### Quick Start with run-local.sh
+
+A convenience script at the project root handles the Maven build and Docker Compose lifecycle:
+
+```bash
+cd userservice
+
+./run-local.sh            # default: build JARs + docker-compose up -d --build
+./run-local.sh up         # docker-compose up -d --build (no JAR rebuild)
+./run-local.sh up --follow # build + up + stream logs
+./run-local.sh down       # stop and remove containers
+./run-local.sh down -v    # stop and remove containers + volumes (clears Redis data)
+./run-local.sh logs [svc] # stream logs (optionally for a specific service)
+./run-local.sh status     # show container status (docker-compose ps)
+./run-local.sh restart    # restart all containers
+```
+
+The script auto-detects whether `docker compose` (V2 plugin) or `docker-compose` (standalone) is available.
+
+---
+
 ### 1. Build the JARs (required for SDS single-stage services)
 
 The traditional microservices (auth, user, order, product, config-server, eureka-server, api-gateway) use single-stage Dockerfiles that copy a pre-built JAR. You must build them first:

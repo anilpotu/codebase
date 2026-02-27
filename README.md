@@ -1,6 +1,6 @@
 # Enterprise Microservices Monorepo
 
-A monorepo containing two independent, production-grade microservices platforms deployed on AWS EKS with Istio service mesh and a shared GitLab CI/CD pipeline.
+A monorepo containing three independent, production-grade microservices platforms deployed on AWS EKS with Istio service mesh and a shared GitLab CI/CD pipeline.
 
 ---
 
@@ -19,10 +19,25 @@ A monorepo containing two independent, production-grade microservices platforms 
 │   ├── enterprise-ui/              # React 18 SPA (Vite + Nginx)
 │   ├── k8s/                        # Kubernetes + Istio manifests
 │   └── terraform/                  # AWS infrastructure (VPC, EKS, RDS, ECR)
-└── secure-distributed-system/      # Spring Cloud microservices platform
-    ├── .gitlab-ci.yml              # Child pipeline (build → test → quality → docker → scan → deploy → verify → integration-test)
-    ├── Jenkinsfile                 # Legacy Jenkins pipeline (reference only)
-    ├── common-lib/                 # Shared JWT, DTOs, exception handlers
+├── secure-distributed-system/      # Spring Cloud microservices platform
+│   ├── .gitlab-ci.yml              # Child pipeline (build → test → quality → docker → scan → deploy → verify → integration-test)
+│   ├── Jenkinsfile                 # Legacy Jenkins pipeline (reference only)
+│   ├── common-lib/                 # Shared JWT, DTOs, exception handlers
+│   ├── config-server/              # Spring Cloud Config Server — :8888
+│   ├── eureka-server/              # Netflix Eureka service registry — :8761
+│   ├── api-gateway/                # Spring Cloud Gateway + Redis rate limiting — :8000
+│   ├── auth-service/               # JWT auth (HS512, 15 min access / 7 day refresh) — :8080
+│   ├── user-service/               # User profile management — :8081
+│   ├── order-service/              # Order management — :8082
+│   ├── product-service/            # Product catalog + Redis cache — :8083
+│   ├── config-repo/                # Git-backed YAML configuration files
+│   ├── k8s/                        # Kubernetes + Istio manifests
+│   └── terraform/                  # AWS infrastructure (VPC, EKS, RDS, ElastiCache, ECR)
+└── userservice/                    # Combined Spring Cloud + gRPC enterprise platform
+    ├── pom.xml                     # Maven parent POM (Java 11, Spring Boot 2.7.18)
+    ├── docker-compose.yml          # Orchestrates all 13 services
+    ├── run-local.sh                # Convenience script: build JARs + docker-compose
+    ├── common-lib/                 # Shared DTOs, JWT utils, security config
     ├── config-server/              # Spring Cloud Config Server — :8888
     ├── eureka-server/              # Netflix Eureka service registry — :8761
     ├── api-gateway/                # Spring Cloud Gateway + Redis rate limiting — :8000
@@ -30,6 +45,11 @@ A monorepo containing two independent, production-grade microservices platforms 
     ├── user-service/               # User profile management — :8081
     ├── order-service/              # Order management — :8082
     ├── product-service/            # Product catalog + Redis cache — :8083
+    ├── user-grpc-service/          # Dual REST :8090 + gRPC :9090
+    ├── financial-service/          # Accounts & transactions — :8084
+    ├── health-service/             # Health records & vitals — :8085
+    ├── social-service/             # Profiles, posts, connections — :8086
+    ├── enterprise-ui/              # React 18 SPA (Vite + Nginx) — :3000
     ├── config-repo/                # Git-backed YAML configuration files
     ├── k8s/                        # Kubernetes + Istio manifests
     └── terraform/                  # AWS infrastructure (VPC, EKS, RDS, ElastiCache, ECR)
@@ -44,6 +64,7 @@ A monorepo containing two independent, production-grade microservices platforms 
   - [Required Variables](#required-variables)
   - [grpc-enterprise-v3 Stages](#grpc-enterprise-v3-stages)
   - [secure-distributed-system Stages](#secure-distributed-system-stages)
+  - [userservice Stages](#userservice-stages)
 - [Project 1 — grpc-enterprise-v3](#project-1--grpc-enterprise-v3)
   - [Architecture](#architecture)
   - [Backend Microservices](#backend-microservices)
@@ -60,6 +81,10 @@ A monorepo containing two independent, production-grade microservices platforms 
   - [Services](#services)
   - [Local Development (Docker Compose)](#local-development-docker-compose)
   - [Local Development (Maven)](#local-development-maven)
+- [Project 3 — userservice](#project-3--userservice)
+  - [Architecture](#architecture-2)
+  - [Services](#services-1)
+  - [Local Development](#local-development-1)
 - [Security Notes](#security-notes)
 - [Production Readiness Checklist](#production-readiness-checklist)
 
@@ -74,11 +99,12 @@ The root [.gitlab-ci.yml](.gitlab-ci.yml) acts as a monorepo dispatcher. It uses
 ```
 Push / MR
     │
-    ├─► grpc-enterprise-v3 child pipeline     (when grpc-enterprise-v3/** changes)
-    └─► secure-distributed-system child pipeline (when secure-distributed-system/** changes)
+    ├─► grpc-enterprise-v3 child pipeline        (when grpc-enterprise-v3/** changes)
+    ├─► secure-distributed-system child pipeline (when secure-distributed-system/** changes)
+    └─► userservice child pipeline               (when userservice/** changes)
 ```
 
-Both child pipelines run independently and in parallel.
+All three child pipelines run independently and in parallel.
 
 ### Required Variables
 
@@ -151,6 +177,23 @@ Deployment order enforced inside the `deploy` job:
    product-service      ┘
 5. Istio VirtualServices / DestinationRules
 ```
+
+### userservice Stages
+
+Defined in [userservice/.gitlab-ci.yml](userservice/.gitlab-ci.yml). Combines elements from both child pipelines to handle the mixed build strategy (single-stage SDS Dockerfiles + multi-stage gRPC Dockerfiles).
+
+| Stage | Jobs | When | Notes |
+|---|---|---|---|
+| `build` | `build` | Always | `mvn clean package -DskipTests` — produces JARs for SDS-origin services |
+| `test` | `test` | Unless `SKIP_TESTS=true` | `mvn test` across all 12 modules, JaCoCo artifacts |
+| `quality` | `quality:owasp`, `quality:sonarqube` | Always / if `SONARQUBE_ENABLED` | OWASP blocks at CVSS ≥ 9 on `DEPLOY_ENV=prod` |
+| `docker` | 13 jobs in parallel | `main` only | Mixed strategy: SDS services copy pre-built JARs, gRPC services run Maven inside Docker |
+| `scan` | 13 Trivy jobs in parallel | `main` only | ECR image scan per service, non-blocking |
+| `deploy` | `deploy` | `main`, **manual** | Ordered: config-server → eureka → redis → business services |
+| `verify` | `verify` | `main` only | Rollout status + pod/svc summary |
+| `integration-test` | `integration-test` | `main` only | Actuator `/health` per service via `kubectl exec` |
+
+---
 
 #### Triggering with parameters
 
@@ -521,6 +564,100 @@ cd api-gateway     && mvn spring-boot:run  # :8000
 cd user-service    && mvn spring-boot:run  # :8081
 cd order-service   && mvn spring-boot:run  # :8082
 cd product-service && mvn spring-boot:run  # :8083
+```
+
+---
+
+## Project 3 — userservice
+
+A unified platform that merges grpc-enterprise-v3 and secure-distributed-system into a single cohesive system. The four gRPC enterprise services have been integrated with Spring Cloud infrastructure — they now register with Eureka, fetch configuration from Config Server, and are routable through the shared API Gateway. All traffic flows through a single entry point, and the React UI talks only to the gateway.
+
+### Architecture
+
+```
+Internet
+    │
+    ▼
+Enterprise UI (:3000)          React 18 SPA — all /api/* proxied → api-gateway:8000
+    │
+    ▼
+API Gateway (:8000)            Spring Cloud Gateway + Redis rate limiting
+    │                          JWT pass-through (each service validates its own token)
+    ├──► auth-service    (:8080)   Access token 15 min / refresh token 7 days
+    ├──► user-service    (:8081)   User profile CRUD
+    ├──► order-service   (:8082)   Order management
+    ├──► product-service (:8083)   Product catalog + Redis cache
+    ├──► user-grpc-service (:8090 REST / :9090 gRPC)
+    ├──► financial-service (:8084) Accounts & transactions
+    ├──► health-service  (:8085)   Health records & vitals
+    └──► social-service  (:8086)   Profiles, posts, connections
+              │
+              ▼
+     config-server (:8888)         Spring Cloud Config (native, reads config-repo/)
+     eureka-server (:8761)         Netflix Eureka (12 services registered)
+     redis         (:6379)         Rate limiting (api-gateway) + product caching
+     PostgreSQL                    grpcdb │ financialdb │ healthdb │ socialdb
+```
+
+**Dual JWT architecture:** SDS-origin services (auth/user/order/product) use HMAC-SHA512 with a 15-minute access token and 7-day refresh token. gRPC-origin services (user-grpc/financial/health/social) use a separate 24-hour HMAC-SHA512 secret. The API Gateway passes `Authorization` headers through without validating them.
+
+### Services
+
+| Service | Port | Origin | Database |
+|---|---|---|---|
+| `config-server` | 8888 | Spring Cloud | — |
+| `eureka-server` | 8761 | Spring Cloud | — |
+| `api-gateway` | 8000 | Spring Cloud | — |
+| `auth-service` | 8080 | SDS stack | H2 (`authdb`) |
+| `user-service` | 8081 | SDS stack | H2 (`userdb`) |
+| `order-service` | 8082 | SDS stack | H2 (`orderdb`) |
+| `product-service` | 8083 | SDS stack | H2 (`productdb`) |
+| `user-grpc-service` | 8090 / 9090 | gRPC enterprise | PostgreSQL (`grpcdb`) |
+| `financial-service` | 8084 | gRPC enterprise | PostgreSQL (`financialdb`) |
+| `health-service` | 8085 | gRPC enterprise | PostgreSQL (`healthdb`) |
+| `social-service` | 8086 | gRPC enterprise | PostgreSQL (`socialdb`) |
+| `enterprise-ui` | 3000 | React / Nginx | — |
+
+### Local Development
+
+#### Quick Start (Docker Compose)
+
+```bash
+cd userservice
+
+# Option A — convenience script (recommended)
+./run-local.sh            # build JARs + docker-compose up -d --build (default)
+./run-local.sh up         # docker-compose up -d --build
+./run-local.sh up --follow # build + up + stream logs
+./run-local.sh logs       # stream all logs
+./run-local.sh status     # show container status
+./run-local.sh down       # stop and remove containers
+./run-local.sh restart    # restart all containers
+
+# Option B — manual steps
+mvn clean package -DskipTests          # build JARs for SDS-origin services
+docker-compose up -d --build           # start all 13 containers
+docker-compose logs -f                 # stream logs
+docker-compose down                    # stop and remove
+```
+
+Full startup takes approximately **2–3 minutes** due to the health-check dependency chain (`config-server` → `eureka-server` → `redis` → all business services → `api-gateway` → `enterprise-ui`).
+
+#### Verify
+
+```bash
+curl http://localhost:8888/actuator/health    # Config Server
+curl http://localhost:8761/actuator/health    # Eureka
+curl http://localhost:8000/actuator/health    # API Gateway
+curl http://localhost:3000                    # Enterprise UI
+
+# Eureka dashboard (expect 12 services registered)
+open http://localhost:8761
+
+# Sample API call (SDS services via gateway)
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alice","password":"secret","email":"alice@example.com"}'
 ```
 
 ---

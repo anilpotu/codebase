@@ -41,6 +41,7 @@ codebase/
 │   │   ├── 04-k8s-setup.sh             Configure kubectl, Istio, K8s secrets
 │   │   ├── 05-helm-deploy.sh           Deploy via Helm (recommended)
 │   │   ├── 06-verify.sh                Health checks and rollout verification
+│   │   ├── run-local.sh                Local run script for userservice (build + docker-compose)
 │   │   └── teardown.sh                 Remove Helm releases (+ optional infra destroy)
 │   └── environments/
 │       ├── dev/                        Dev override values for all three charts
@@ -90,6 +91,7 @@ codebase/
 │   ├── social-service/                 Social platform service (port 8086)
 │   ├── enterprise-ui/                  React 18 frontend (port 80)
 │   ├── docker-compose.yml
+│   ├── run-local.sh                    Local convenience script (build JARs + docker-compose)
 │   └── README.md
 │
 ├── docker-build-push.sh                Root-level Docker build helper

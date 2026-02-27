@@ -140,6 +140,8 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - SPRING_CLOUD_CONFIG_USERNAME=config-user
+      - SPRING_CLOUD_CONFIG_PASSWORD=config-pass
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:eureka@eureka-server:8761/eureka
     depends_on:
       eureka-server:
@@ -160,6 +162,8 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - SPRING_CLOUD_CONFIG_USERNAME=config-user
+      - SPRING_CLOUD_CONFIG_PASSWORD=config-pass
       - SPRING_REDIS_HOST=redis
       - SPRING_REDIS_PORT=6379
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:eureka@eureka-server:8761/eureka
@@ -284,6 +288,7 @@ services:
       - SPRING_REDIS_HOST=redis
       - SPRING_REDIS_PORT=6379
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:eureka@eureka-server:8761/eureka
+      - SPRING_MAIN_WEB_APPLICATION_TYPE=reactive
     depends_on:
       eureka-server:
         condition: service_healthy

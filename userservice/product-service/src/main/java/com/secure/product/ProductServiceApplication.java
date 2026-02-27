@@ -9,7 +9,7 @@ import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
  * Product Service Application
  * Demonstrates public endpoints, Redis caching, and mixed security
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.secure.product", "com.secure.common"})
 @EnableEurekaClient
 @EnableCaching
 public class ProductServiceApplication {

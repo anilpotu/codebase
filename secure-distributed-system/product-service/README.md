@@ -48,9 +48,9 @@ A business microservice demonstrating public endpoints, Redis caching, and mixed
 
 ### Security
 
-- OAuth2 Resource Server
-- JWT token validation
-- Realm roles extraction from Keycloak
+- Spring Security with JWT token validation
+- Custom ADMIN role extracted from JWT claims (issued by auth-service)
+- Public GET endpoints; POST/PUT/DELETE require ADMIN role
 
 ## Sample Data
 
