@@ -1,6 +1,8 @@
 package com.enterprise.financial.controller;
 
+import com.enterprise.financial.client.UserGrpcServiceClient;
 import com.enterprise.financial.dto.CreateAccountRequest;
+import com.enterprise.financial.dto.GrpcUserDTO;
 import com.enterprise.financial.entity.Account;
 import com.enterprise.financial.repository.AccountRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,9 +12,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 
@@ -34,6 +40,9 @@ class AccountControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @MockBean
+    private UserGrpcServiceClient userGrpcServiceClient;
+
     @BeforeEach
     void setUp() {
         accountRepository.deleteAll();
@@ -46,6 +55,11 @@ class AccountControllerTest {
 
     @Test
     void createAccount_returns201() throws Exception {
+        GrpcUserDTO user = new GrpcUserDTO();
+        user.setId(100L);
+        user.setName("Test User");
+        when(userGrpcServiceClient.getUserById(100L)).thenReturn(ResponseEntity.ok(user));
+
         CreateAccountRequest request = new CreateAccountRequest();
         request.setUserId(100L);
         request.setAccountType("SAVINGS");

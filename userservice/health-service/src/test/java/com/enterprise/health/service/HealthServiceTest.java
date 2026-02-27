@@ -1,7 +1,9 @@
 package com.enterprise.health.service;
 
+import com.enterprise.health.client.UserGrpcServiceClient;
 import com.enterprise.health.dto.CreateHealthRecordRequest;
 import com.enterprise.health.dto.CreateVitalRequest;
+import com.enterprise.health.dto.GrpcUserDTO;
 import com.enterprise.health.dto.HealthRecordDTO;
 import com.enterprise.health.dto.VitalDTO;
 import com.enterprise.health.entity.HealthRecord;
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -34,6 +37,9 @@ class HealthServiceTest {
 
     @Mock
     private VitalRepository vitalRepository;
+
+    @Mock
+    private UserGrpcServiceClient userGrpcServiceClient;
 
     @InjectMocks
     private HealthService healthService;
@@ -89,6 +95,11 @@ class HealthServiceTest {
 
     @Test
     void createHealthRecord_new() {
+        GrpcUserDTO user = new GrpcUserDTO();
+        user.setId(1L);
+        user.setName("Test User");
+        when(userGrpcServiceClient.getUserById(1L)).thenReturn(ResponseEntity.ok(user));
+
         when(healthRecordRepository.findByUserId(1L)).thenReturn(Optional.empty());
         when(healthRecordRepository.save(any(HealthRecord.class))).thenReturn(existingRecord);
 
@@ -111,6 +122,11 @@ class HealthServiceTest {
 
     @Test
     void updateHealthRecord_existing() {
+        GrpcUserDTO user = new GrpcUserDTO();
+        user.setId(1L);
+        user.setName("Test User");
+        when(userGrpcServiceClient.getUserById(1L)).thenReturn(ResponseEntity.ok(user));
+
         when(healthRecordRepository.findByUserId(1L)).thenReturn(Optional.of(existingRecord));
 
         HealthRecord updatedRecord = new HealthRecord();

@@ -1,8 +1,10 @@
 package com.enterprise.financial.service;
 
+import com.enterprise.financial.client.UserGrpcServiceClient;
 import com.enterprise.financial.dto.AccountDTO;
 import com.enterprise.financial.dto.CreateAccountRequest;
 import com.enterprise.financial.dto.CreateTransactionRequest;
+import com.enterprise.financial.dto.GrpcUserDTO;
 import com.enterprise.financial.dto.TransactionDTO;
 import com.enterprise.financial.entity.Account;
 import com.enterprise.financial.entity.Transaction;
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.ResponseEntity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -34,6 +37,9 @@ class FinancialServiceTest {
 
     @Mock
     private TransactionRepository transactionRepository;
+
+    @Mock
+    private UserGrpcServiceClient userGrpcServiceClient;
 
     @InjectMocks
     private FinancialService financialService;
@@ -57,6 +63,11 @@ class FinancialServiceTest {
         request.setUserId(100L);
         request.setAccountType("SAVINGS");
         request.setCurrency("USD");
+
+        GrpcUserDTO user = new GrpcUserDTO();
+        user.setId(100L);
+        user.setName("Test User");
+        when(userGrpcServiceClient.getUserById(100L)).thenReturn(ResponseEntity.ok(user));
 
         when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> {
             Account saved = invocation.getArgument(0);
@@ -84,6 +95,11 @@ class FinancialServiceTest {
         request.setUserId(100L);
         request.setAccountType("CHECKING");
         request.setCurrency(null);
+
+        GrpcUserDTO user = new GrpcUserDTO();
+        user.setId(100L);
+        user.setName("Test User");
+        when(userGrpcServiceClient.getUserById(100L)).thenReturn(ResponseEntity.ok(user));
 
         when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> {
             Account saved = invocation.getArgument(0);

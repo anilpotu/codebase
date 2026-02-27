@@ -1,6 +1,8 @@
 package com.enterprise.health.controller;
 
+import com.enterprise.health.client.UserGrpcServiceClient;
 import com.enterprise.health.dto.CreateHealthRecordRequest;
+import com.enterprise.health.dto.GrpcUserDTO;
 import com.enterprise.health.entity.HealthRecord;
 import com.enterprise.health.repository.HealthRecordRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,9 +12,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
 
@@ -32,6 +39,9 @@ class HealthRecordControllerTest {
     @Autowired
     private HealthRecordRepository healthRecordRepository;
 
+    @MockBean
+    private UserGrpcServiceClient userGrpcServiceClient;
+
     private ObjectMapper objectMapper;
 
     @BeforeEach
@@ -39,6 +49,13 @@ class HealthRecordControllerTest {
         healthRecordRepository.deleteAll();
         objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
+
+        GrpcUserDTO user = new GrpcUserDTO();
+        user.setName("Test User");
+        when(userGrpcServiceClient.getUserById(anyLong())).thenAnswer(invocation -> {
+            user.setId(invocation.getArgument(0));
+            return ResponseEntity.ok(user);
+        });
     }
 
     @Test
