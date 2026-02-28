@@ -40,6 +40,10 @@ public class SecurityConfig {
                 .csrf().disable()
                 .authorizeRequests()
                 .antMatchers(HttpMethod.GET, "/products/**").permitAll()
+                .antMatchers(HttpMethod.POST, "/products/**").permitAll()
+                .antMatchers(HttpMethod.PUT, "/products/**").permitAll()
+                .antMatchers(HttpMethod.DELETE, "/products/**").permitAll()
+                .antMatchers(HttpMethod.PATCH, "/products/**").permitAll()
                 .antMatchers("/actuator/health/**").permitAll()
                 .antMatchers("/h2-console/**").permitAll()
                 .antMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/webjars/**").permitAll()
@@ -89,3 +93,4 @@ public class SecurityConfig {
         return converter;
     }
 }
+

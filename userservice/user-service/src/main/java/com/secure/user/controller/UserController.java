@@ -32,10 +32,10 @@ public class UserController {
     @Autowired
     private SecurityService securityService;
 
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping({"", "/allusers"})
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
     public ResponseEntity<ApiResponse<List<UserProfileDTO>>> getAllProfiles() {
-        log.debug("GET /users");
+        log.debug("GET /users (all profiles)");
         List<UserProfileDTO> profiles = userService.getAllProfiles();
         ApiResponse<List<UserProfileDTO>> response = ApiResponse.<List<UserProfileDTO>>builder()
                 .success(true)

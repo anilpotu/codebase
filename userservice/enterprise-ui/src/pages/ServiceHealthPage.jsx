@@ -3,15 +3,15 @@ import { useMemo, useState } from 'react';
 const CHECK_TIMEOUT_MS = 5000;
 
 const serviceChecks = [
-  { id: 'api-gateway', name: 'API Gateway', method: 'GET', path: '/api/does-not-exist' },
-  { id: 'auth-service', name: 'Auth Service', method: 'POST', path: '/api/auth/login', body: { username: 'health-check', password: 'health-check' } },
-  { id: 'user-service', name: 'User Service', method: 'GET', path: '/api/users/me' },
-  { id: 'order-service', name: 'Order Service', method: 'GET', path: '/api/orders' },
-  { id: 'product-service', name: 'Product Service', method: 'GET', path: '/api/products' },
-  { id: 'user-grpc-service', name: 'User gRPC Service', method: 'GET', path: '/api/grpc-users/1' },
-  { id: 'financial-service', name: 'Financial Service', method: 'GET', path: '/api/accounts/user/1' },
-  { id: 'health-service', name: 'Health Service', method: 'GET', path: '/api/health-records/user/1' },
-  { id: 'social-service', name: 'Social Service', method: 'GET', path: '/api/posts/user/1' },
+  { id: 'api-gateway', name: 'API Gateway', method: 'GET', path: '/actuator/health' },
+  { id: 'auth-service', name: 'Auth Service', method: 'GET', path: '/health/auth-service' },
+  { id: 'user-service', name: 'User Service', method: 'GET', path: '/health/user-service' },
+  { id: 'order-service', name: 'Order Service', method: 'GET', path: '/health/order-service' },
+  { id: 'product-service', name: 'Product Service', method: 'GET', path: '/health/product-service' },
+  { id: 'user-grpc-service', name: 'User gRPC Service', method: 'GET', path: '/health/user-grpc-service' },
+  { id: 'financial-service', name: 'Financial Service', method: 'GET', path: '/health/financial-service' },
+  { id: 'health-service', name: 'Health Service', method: 'GET', path: '/health/health-service' },
+  { id: 'social-service', name: 'Social Service', method: 'GET', path: '/health/social-service' },
 ];
 
 function statusClass(status) {
@@ -39,21 +39,16 @@ async function runCheck(check) {
     const response = await fetch(check.path, options);
     const durationMs = Math.round(performance.now() - startedAt);
 
-    const isServerError = response.status >= 500;
-    const isAuthOrNotFound = [401, 403, 404].includes(response.status);
+    const isHealthy = response.ok;
 
     return {
       ...check,
-      status: isServerError ? 'DOWN' : 'UP',
+      status: isHealthy ? 'UP' : 'DOWN',
       httpStatus: response.status,
       durationMs,
-      detail: response.ok
+      detail: isHealthy
         ? 'Healthy response'
-        : isAuthOrNotFound
-          ? 'Endpoint reachable (auth/not-found response)'
-          : isServerError
-            ? 'Server error from endpoint'
-            : 'Endpoint reachable (non-2xx response)',
+        : 'Health endpoint returned non-2xx',
       checkedAt: new Date().toISOString(),
     };
   } catch (error) {

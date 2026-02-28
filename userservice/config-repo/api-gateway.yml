@@ -43,13 +43,19 @@ spring:
         # gRPC-origin Services — controllers already include /api/ prefix
         # (e.g. /api/accounts/**, /api/health-records/**) so no stripping needed.
         # user-grpc-service uses RewritePath to map /api/grpc-users/** → /api/users/**
+        - id: user-grpc-service-root
+          uri: lb://user-grpc-service
+          predicates:
+            - Path=/api/grpc-users
+          filters:
+            - SetPath=/api/users
+
         - id: user-grpc-service
           uri: lb://user-grpc-service
           predicates:
             - Path=/api/grpc-users/**
           filters:
             - RewritePath=/api/grpc-users/(?<remaining>.*), /api/users/$\{remaining}
-
         - id: financial-service
           uri: lb://financial-service
           predicates:
@@ -64,6 +70,63 @@ spring:
           uri: lb://social-service
           predicates:
             - Path=/api/profiles/**,/api/posts/**,/api/connections/**
+
+        # Unified health endpoints exposed by gateway
+        - id: auth-service-health
+          uri: lb://auth-service
+          predicates:
+            - Path=/health/auth-service
+          filters:
+            - SetPath=/actuator/health
+
+        - id: user-service-health
+          uri: lb://user-service
+          predicates:
+            - Path=/health/user-service
+          filters:
+            - SetPath=/actuator/health
+
+        - id: order-service-health
+          uri: lb://order-service
+          predicates:
+            - Path=/health/order-service
+          filters:
+            - SetPath=/actuator/health
+
+        - id: product-service-health
+          uri: lb://product-service
+          predicates:
+            - Path=/health/product-service
+          filters:
+            - SetPath=/actuator/health
+
+        - id: user-grpc-service-health
+          uri: lb://user-grpc-service
+          predicates:
+            - Path=/health/user-grpc-service
+          filters:
+            - SetPath=/actuator/health
+
+        - id: financial-service-health
+          uri: lb://financial-service
+          predicates:
+            - Path=/health/financial-service
+          filters:
+            - SetPath=/actuator/health
+
+        - id: health-service-health
+          uri: lb://health-service
+          predicates:
+            - Path=/health/health-service
+          filters:
+            - SetPath=/actuator/health
+
+        - id: social-service-health
+          uri: lb://social-service
+          predicates:
+            - Path=/health/social-service
+          filters:
+            - SetPath=/actuator/health
 
         # OpenAPI Documentation Routes
         - id: auth-service-api-docs
@@ -163,3 +226,4 @@ springdoc:
         url: /v3/api-docs/health-service
       - name: social-service
         url: /v3/api-docs/social-service
+

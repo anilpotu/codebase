@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(minikube image load userservice-health-service:latest)",
+      "Bash(minikube image load userservice-social-service:latest)",
+      "Bash(minikube image load userservice-enterprise-ui:latest)"
+    ]
+  }
+}

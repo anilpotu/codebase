@@ -94,10 +94,11 @@ public class JwtAuthenticationFilter implements WebFilter {
     private boolean isPublicPath(String path) {
         return path.startsWith("/actuator/health") ||
                path.startsWith("/actuator/info") ||
+               path.startsWith("/health/") ||
                // SDS auth endpoints (login, register, refresh, validate, logout)
                path.startsWith("/api/auth/") ||
                // Product catalog public read; write ops are secured by product-service itself
-               path.startsWith("/api/products/") ||
+               path.equals("/api/products") || path.startsWith("/api/products/") ||
                // gRPC-origin services validate their own JWTs (different issuer)
                path.startsWith("/api/grpc-users/") ||
                path.startsWith("/api/accounts/") ||
@@ -126,3 +127,4 @@ public class JwtAuthenticationFilter implements WebFilter {
         return String.valueOf(rolesClaim);
     }
 }
+

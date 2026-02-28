@@ -25,6 +25,7 @@ Central deployment project for all microservice platforms in this monorepo. Cove
 17. [Rollback Procedures](#17-rollback-procedures)
 18. [Teardown](#18-teardown)
 19. [Troubleshooting](#19-troubleshooting)
+20. [Local Kubernetes Deploy — userservice (minikube)](#20-local-kubernetes-deploy--userservice-minikube)
 
 ---
 
@@ -41,6 +42,7 @@ codebase/
 │   │   ├── 04-k8s-setup.sh             Configure kubectl, Istio, K8s secrets
 │   │   ├── 05-helm-deploy.sh           Deploy via Helm (recommended)
 │   │   ├── 06-verify.sh                Health checks and rollout verification
+│   │   ├── 07-k8s-local-deploy.sh      Deploy userservice to local minikube cluster
 │   │   ├── run-local.sh                Local run script for userservice (build + docker-compose)
 │   │   └── teardown.sh                 Remove Helm releases (+ optional infra destroy)
 │   └── environments/
@@ -76,6 +78,7 @@ codebase/
 │
 ├── userservice/                        Combined platform (grpc + Spring Cloud)
 │   ├── helm/                           Helm chart (umbrella + 12 sub-charts)
+│   ├── k8s/                            Raw Kubernetes manifests (local minikube deployment)
 │   ├── terraform/                      AWS infrastructure (EKS, RDS, ECR, ElastiCache)
 │   ├── config-repo/                    Spring Cloud Config repo (9 YAML files)
 │   ├── config-server/                  Spring Cloud Config (port 8888)
@@ -1594,4 +1597,158 @@ export DB_PASSWORD="..." JWT_SECRET="..."
 
 # 6. Verify (health checks: config:8888, eureka:8761, gw:8000, all business services)
 ./deployment/scripts/06-verify.sh us
+```
+
+---
+
+## 20. Local Kubernetes Deploy — userservice (minikube)
+
+Deploy the entire userservice stack to a local minikube cluster without any AWS infrastructure. Uses raw Kubernetes manifests from `userservice/k8s/`.
+
+### Prerequisites
+
+| Tool | Version | Notes |
+|---|---|---|
+| minikube | v1.30+ | Local Kubernetes cluster via Docker driver |
+| kubectl | v1.28+ | Kubernetes CLI |
+| Docker Desktop | 24+ | Docker daemon + minikube Docker driver |
+
+### Quickstart
+
+```bash
+# Step 1 — Build userservice Docker images (from repo root)
+cd userservice
+docker compose build
+cd ..
+
+# Step 2 — Deploy everything to minikube (starts minikube if needed)
+./deployment/scripts/07-k8s-local-deploy.sh
+
+# Step 3 — Watch pods come up (separate terminal)
+kubectl get pods -n userservice -w
+```
+
+### Script actions (07-k8s-local-deploy.sh)
+
+```bash
+# Full deploy (default): start minikube → load images → apply manifests → wait for rollouts
+./deployment/scripts/07-k8s-local-deploy.sh
+
+# Show pod/service status and access points
+./deployment/scripts/07-k8s-local-deploy.sh status
+
+# Load images only (useful after rebuilding one service)
+./deployment/scripts/07-k8s-local-deploy.sh load-images
+
+# Tear down: delete entire userservice namespace
+./deployment/scripts/07-k8s-local-deploy.sh teardown
+```
+
+### What gets deployed
+
+All 17 manifests in `userservice/k8s/` applied in strict dependency order:
+
+| # | Manifest | Description |
+|---|---|---|
+| 00 | `00-namespace.yaml` | `userservice` namespace |
+| 01 | `01-secrets.yaml` | JWT, DB, config-server credentials |
+| 02 | `02-config-repo-configmap.yaml` | All config-repo YAML files as ConfigMap |
+| 03 | `03-postgres.yaml` | StatefulSet + PVC (2Gi) + init SQL (creates 4 extra DBs) |
+| 04 | `04-redis.yaml` | Redis Deployment + ClusterIP Service |
+| 05 | `05-config-server.yaml` | Spring Cloud Config (mounts config-repo ConfigMap) |
+| 06 | `06-eureka-server.yaml` | Netflix Eureka (waits for config-server) |
+| 07 | `07-auth-service.yaml` | JWT auth service (waits for eureka-server) |
+| 08 | `08-user-service.yaml` | User CRUD service |
+| 09 | `09-order-service.yaml` | Order management service |
+| 10 | `10-product-service.yaml` | Product catalog + Redis cache |
+| 11 | `11-api-gateway.yaml` | Spring Cloud Gateway — NodePort **30000** |
+| 12 | `12-user-grpc-service.yaml` | gRPC user service (REST :8090, gRPC :9090) |
+| 13 | `13-financial-service.yaml` | Financial records service |
+| 14 | `14-health-service.yaml` | Health records service |
+| 15 | `15-social-service.yaml` | Social platform service |
+| 16 | `16-enterprise-ui.yaml` | React 18 frontend — NodePort **30080** |
+
+### Access points after deployment
+
+```bash
+# Get minikube IP
+MINIKUBE_IP=$(minikube ip)
+
+# API Gateway (all /api/* routes)
+http://$MINIKUBE_IP:30000
+
+# Enterprise UI (React SPA)
+http://$MINIKUBE_IP:30080
+
+# Swagger UI (via api-gateway)
+http://$MINIKUBE_IP:30000/swagger-ui.html
+```
+
+### Port-forward internal services
+
+```bash
+# Config server
+kubectl port-forward svc/config-server  8888:8888 -n userservice &
+
+# Eureka dashboard
+kubectl port-forward svc/eureka-server  8761:8761 -n userservice &
+# Open: http://localhost:8761
+
+# Auth service direct
+kubectl port-forward svc/auth-service   8080:8080 -n userservice &
+
+# User service direct
+kubectl port-forward svc/user-service   8081:8081 -n userservice &
+```
+
+### Key design decisions for local deployment
+
+| Concern | Solution |
+|---|---|
+| Image availability | `imagePullPolicy: IfNotPresent` — uses locally loaded images; falls back to registry |
+| Image loading | `minikube image load <image>` — pushes Docker images into minikube's internal registry |
+| Memory limits | `JAVA_TOOL_OPTIONS: -Xmx350m -Xms128m` — fits 12 JVMs in 4 GB minikube cluster |
+| Startup ordering | initContainers with busybox `wget`/`nc` health checks enforce: postgres→redis→config-server→eureka→services |
+| Config delivery | config-repo ConfigMap mounted at `/config-repo` in config-server pod; no external Git server needed |
+| BCrypt password | eureka-server.yml stores BCrypt hash for the `eureka` password (matches SecurityConfig.java bean) |
+| PostgreSQL DBs | Init ConfigMap creates 4 extra databases: `grpcdb`, `financialdb`, `healthdb`, `socialdb` |
+| Reactive gateway | `SPRING_MAIN_WEB_APPLICATION_TYPE=reactive` prevents servlet/WebFlux bean conflict in api-gateway |
+
+### Useful kubectl commands
+
+```bash
+# Watch all pods start up
+kubectl get pods -n userservice -w
+
+# Tail logs for a service
+kubectl logs -f deploy/auth-service    -n userservice
+kubectl logs -f deploy/eureka-server   -n userservice
+kubectl logs -f deploy/config-server   -n userservice
+
+# Debug a crashing pod
+kubectl describe pod <pod-name> -n userservice
+
+# Check init container logs (if pod is stuck in Init state)
+kubectl logs <pod-name> -c wait-for-config-server -n userservice
+kubectl logs <pod-name> -c wait-for-eureka-server -n userservice
+
+# Run a health check inside a pod
+kubectl exec deploy/config-server -n userservice -- wget -qO- http://localhost:8888/actuator/health
+
+# Delete and redeploy a single service
+kubectl delete deployment auth-service -n userservice
+kubectl apply -f userservice/k8s/07-auth-service.yaml
+```
+
+### Teardown
+
+```bash
+# Remove all userservice resources (interactive confirmation required)
+./deployment/scripts/07-k8s-local-deploy.sh teardown
+
+# Stop minikube (preserves cluster state)
+minikube stop
+
+# Delete minikube cluster completely
+minikube delete
 ```
