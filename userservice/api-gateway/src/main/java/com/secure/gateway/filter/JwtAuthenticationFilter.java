@@ -14,7 +14,9 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class JwtAuthenticationFilter implements WebFilter {
@@ -63,8 +65,10 @@ public class JwtAuthenticationFilter implements WebFilter {
             // Extract claims
             Claims claims = jwtTokenProvider.getClaimsFromToken(token);
             String username = claims.getSubject();
-            String userId = claims.get("userId", String.class);
-            String roles = claims.get("roles", String.class);
+            Object userIdClaim = claims.get("userId");
+            Object rolesClaim = claims.get("roles");
+            String userId = userIdClaim != null ? String.valueOf(userIdClaim) : "";
+            String roles = normalizeRoles(rolesClaim);
 
             // Add user info to request headers for downstream services
             ServerHttpRequest mutatedRequest = request.mutate()
@@ -107,5 +111,17 @@ public class JwtAuthenticationFilter implements WebFilter {
                path.startsWith("/swagger-ui/") ||
                path.startsWith("/v3/api-docs/") ||
                path.startsWith("/webjars/");
+    }
+
+    private String normalizeRoles(Object rolesClaim) {
+        if (rolesClaim == null) {
+            return "";
+        }
+        if (rolesClaim instanceof Collection<?>) {
+            return ((Collection<?>) rolesClaim).stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+        }
+        return String.valueOf(rolesClaim);
     }
 }

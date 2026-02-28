@@ -2,7 +2,6 @@ package com.secure.gateway.config;
 
 import com.secure.gateway.filter.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
@@ -14,32 +13,20 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 @EnableWebFluxSecurity
 public class SecurityConfig {
 
-    @Value("${jwt.secret}")
-    private String jwtSecret;
-
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
-            .csrf().disable()
-            .authorizeExchange()
-                .pathMatchers("/actuator/health", "/actuator/info").permitAll()
-                // SDS auth endpoints
-                .pathMatchers("/api/auth/**").permitAll()
-                // Product public reads; product-service enforces auth on writes
-                .pathMatchers("/api/products/**").permitAll()
-                // gRPC-origin services — each service validates its own JWT
-                .pathMatchers("/api/grpc-users/**").permitAll()
-                .pathMatchers("/api/accounts/**", "/api/transactions/**").permitAll()
-                .pathMatchers("/api/health-records/**", "/api/vitals/**").permitAll()
-                .pathMatchers("/api/profiles/**", "/api/posts/**", "/api/connections/**").permitAll()
-                // OpenAPI / Swagger
-                .pathMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/webjars/**").permitAll()
-                .anyExchange().authenticated()
-            .and()
-            .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
-            .build();
+                .csrf().disable()
+                .httpBasic().disable()
+                .formLogin().disable()
+                .authorizeExchange()
+                // Auth enforcement is handled by JwtAuthenticationFilter.
+                .anyExchange().permitAll()
+                .and()
+                .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+                .build();
     }
 }

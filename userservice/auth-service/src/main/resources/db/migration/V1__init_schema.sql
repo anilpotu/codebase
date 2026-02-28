@@ -59,3 +59,7 @@ INSERT INTO user_roles (user_id, role_id) VALUES
 -- Regular user gets ROLE_USER
 INSERT INTO user_roles (user_id, role_id) VALUES
     (2, 1);
+
+-- Keep AUTO_INCREMENT values ahead of seeded IDs for subsequent inserts.
+ALTER TABLE roles ALTER COLUMN id RESTART WITH 3;
+ALTER TABLE users ALTER COLUMN id RESTART WITH 3;
