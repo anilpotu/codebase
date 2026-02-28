@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import ServiceHealthPage from './pages/ServiceHealthPage';
@@ -15,24 +15,50 @@ import ProfilesPage from './pages/social/ProfilesPage';
 import PostsPage from './pages/social/PostsPage';
 import ConnectionsPage from './pages/social/ConnectionsPage';
 
+const TOKEN_KEY = 'userservice_access_token';
+
+function RequireAuth() {
+  const location = useLocation();
+  const hasToken = Boolean(localStorage.getItem(TOKEN_KEY));
+
+  if (!hasToken) {
+    return <Navigate to="/auth" replace state={{ from: location }} />;
+  }
+
+  return <Outlet />;
+}
+
+function RedirectIfAuthenticated() {
+  const hasToken = Boolean(localStorage.getItem(TOKEN_KEY));
+
+  if (hasToken) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <AuthPage />;
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="service-health" element={<ServiceHealthPage />} />
-        <Route path="auth" element={<AuthPage />} />
-        <Route path="grpc-users" element={<UsersPage />} />
-        <Route path="users" element={<UserProfilesPage />} />
-        <Route path="products" element={<ProductsPage />} />
-        <Route path="orders" element={<OrdersPage />} />
-        <Route path="accounts" element={<AccountsPage />} />
-        <Route path="transactions" element={<TransactionsPage />} />
-        <Route path="health-records" element={<HealthRecordsPage />} />
-        <Route path="vitals" element={<VitalsPage />} />
-        <Route path="profiles" element={<ProfilesPage />} />
-        <Route path="posts" element={<PostsPage />} />
-        <Route path="connections" element={<ConnectionsPage />} />
+        <Route path="auth" element={<RedirectIfAuthenticated />} />
+
+        <Route element={<RequireAuth />}>
+          <Route index element={<Dashboard />} />
+          <Route path="service-health" element={<ServiceHealthPage />} />
+          <Route path="grpc-users" element={<UsersPage />} />
+          <Route path="users" element={<UserProfilesPage />} />
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="orders" element={<OrdersPage />} />
+          <Route path="accounts" element={<AccountsPage />} />
+          <Route path="transactions" element={<TransactionsPage />} />
+          <Route path="health-records" element={<HealthRecordsPage />} />
+          <Route path="vitals" element={<VitalsPage />} />
+          <Route path="profiles" element={<ProfilesPage />} />
+          <Route path="posts" element={<PostsPage />} />
+          <Route path="connections" element={<ConnectionsPage />} />
+        </Route>
       </Route>
     </Routes>
   );

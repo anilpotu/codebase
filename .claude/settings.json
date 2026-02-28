@@ -3,7 +3,15 @@
     "allow": [
       "Bash(minikube image load userservice-health-service:latest)",
       "Bash(minikube image load userservice-social-service:latest)",
-      "Bash(minikube image load userservice-enterprise-ui:latest)"
+      "Bash(minikube image load userservice-enterprise-ui:latest)",
+      "Bash(kubectl config use-context minikube)",
+      "Bash(kubectl apply -f userservice/k8s/00-namespace.yaml)",
+      "Bash(kubectl apply -f userservice/k8s/01-secrets.yaml)",
+      "Bash(kubectl apply -f userservice/k8s/02-config-repo-configmap.yaml)",
+      "Bash(kubectl apply -f userservice/k8s/03-postgres.yaml)",
+      "Bash(kubectl apply -f userservice/k8s/04-redis.yaml)",
+      "Bash(kubectl apply -f userservice/k8s/05-config-server.yaml)",
+      "Bash(kubectl apply -f userservice/k8s/06-eureka-server.yaml)"
     ]
   }
 }
