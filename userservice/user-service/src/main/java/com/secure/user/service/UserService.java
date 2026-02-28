@@ -48,6 +48,23 @@ public class UserService {
         return convertToDTO(profile);
     }
 
+    public UserProfileDTO getOrCreateProfileByUserId(Long userId) {
+        log.debug("Fetching or creating user profile by userId: {}", userId);
+        UserProfile profile = userProfileRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    log.info("User profile not found for userId: {}. Creating default profile", userId);
+                    UserProfile newProfile = UserProfile.builder()
+                            .userId(userId)
+                            .firstName("New")
+                            .lastName("User")
+                            .phoneNumber(null)
+                            .address(null)
+                            .build();
+                    return userProfileRepository.save(newProfile);
+                });
+        return convertToDTO(profile);
+    }
+
     public UserProfileDTO updateProfile(Long id, UpdateProfileRequest request) {
         log.info("Updating user profile: {}", id);
         UserProfile profile = userProfileRepository.findById(id)
@@ -63,6 +80,20 @@ public class UserService {
 
         UserProfile updatedProfile = userProfileRepository.save(profile);
         return convertToDTO(updatedProfile);
+    }
+
+    public UserProfileDTO upsertProfileByUserId(Long userId, UpdateProfileRequest request) {
+        log.info("Upserting user profile for userId: {}", userId);
+        UserProfile profile = userProfileRepository.findByUserId(userId)
+                .orElseGet(() -> UserProfile.builder().userId(userId).build());
+
+        profile.setFirstName(request.getFirstName());
+        profile.setLastName(request.getLastName());
+        profile.setPhoneNumber(request.getPhoneNumber());
+        profile.setAddress(request.getAddress());
+
+        UserProfile savedProfile = userProfileRepository.save(profile);
+        return convertToDTO(savedProfile);
     }
 
     public void deleteProfile(Long id) {

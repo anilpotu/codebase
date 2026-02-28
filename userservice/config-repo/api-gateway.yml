@@ -94,6 +94,34 @@ spring:
           filters:
             - RewritePath=/v3/api-docs/product-service, /v3/api-docs
 
+        - id: user-grpc-service-api-docs
+          uri: lb://user-grpc-service
+          predicates:
+            - Path=/v3/api-docs/user-grpc-service
+          filters:
+            - RewritePath=/v3/api-docs/user-grpc-service, /v3/api-docs
+
+        - id: financial-service-api-docs
+          uri: lb://financial-service
+          predicates:
+            - Path=/v3/api-docs/financial-service
+          filters:
+            - RewritePath=/v3/api-docs/financial-service, /v3/api-docs
+
+        - id: health-service-api-docs
+          uri: lb://health-service
+          predicates:
+            - Path=/v3/api-docs/health-service
+          filters:
+            - RewritePath=/v3/api-docs/health-service, /v3/api-docs
+
+        - id: social-service-api-docs
+          uri: lb://social-service
+          predicates:
+            - Path=/v3/api-docs/social-service
+          filters:
+            - RewritePath=/v3/api-docs/social-service, /v3/api-docs
+
       globalcors:
         cors-configurations:
           '[/**]':
@@ -113,3 +141,25 @@ spring:
 
 jwt:
   secret: mySecretKeyForJWTTokenGenerationAndValidation12345678901234567890
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    urls:
+      - name: auth-service
+        url: /v3/api-docs/auth-service
+      - name: user-service
+        url: /v3/api-docs/user-service
+      - name: order-service
+        url: /v3/api-docs/order-service
+      - name: product-service
+        url: /v3/api-docs/product-service
+      - name: user-grpc-service
+        url: /v3/api-docs/user-grpc-service
+      - name: financial-service
+        url: /v3/api-docs/financial-service
+      - name: health-service
+        url: /v3/api-docs/health-service
+      - name: social-service
+        url: /v3/api-docs/social-service

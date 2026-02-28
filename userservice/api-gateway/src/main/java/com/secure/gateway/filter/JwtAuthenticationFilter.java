@@ -108,6 +108,7 @@ public class JwtAuthenticationFilter implements WebFilter {
                path.startsWith("/api/posts/") ||
                path.startsWith("/api/connections/") ||
                // OpenAPI / Swagger
+               path.equals("/swagger-ui.html") ||
                path.startsWith("/swagger-ui/") ||
                path.startsWith("/v3/api-docs/") ||
                path.startsWith("/webjars/");

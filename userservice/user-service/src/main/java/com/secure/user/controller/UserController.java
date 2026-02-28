@@ -97,7 +97,7 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
 
-        UserProfileDTO profile = userService.getProfileByUserId(currentUserId);
+        UserProfileDTO profile = userService.getOrCreateProfileByUserId(currentUserId);
         ApiResponse<UserProfileDTO> response = ApiResponse.<UserProfileDTO>builder()
                 .success(true)
                 .message("Profile retrieved successfully")
@@ -119,8 +119,7 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
 
-        UserProfileDTO currentProfile = userService.getProfileByUserId(currentUserId);
-        UserProfileDTO updatedProfile = userService.updateProfile(currentProfile.getId(), request);
+        UserProfileDTO updatedProfile = userService.upsertProfileByUserId(currentUserId, request);
         ApiResponse<UserProfileDTO> response = ApiResponse.<UserProfileDTO>builder()
                 .success(true)
                 .message("Profile updated successfully")
