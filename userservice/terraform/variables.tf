@@ -46,10 +46,28 @@ variable "node_max_size" {
   default     = 6
 }
 
+variable "node_capacity_type" {
+  description = "EKS node capacity type: ON_DEMAND or SPOT"
+  type        = string
+  default     = "ON_DEMAND"
+}
+
 variable "db_instance_class" {
   description = "RDS instance class"
   type        = string
   default     = "db.t3.medium"
+}
+
+variable "db_allocated_storage" {
+  description = "Initial RDS storage in GiB"
+  type        = number
+  default     = 50
+}
+
+variable "db_max_allocated_storage" {
+  description = "Maximum auto-scaled RDS storage in GiB"
+  type        = number
+  default     = 200
 }
 
 variable "redis_node_type" {

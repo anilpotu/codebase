@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rds-init
+  namespace: userservice
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: psql
+          image: postgres:15-alpine
+          command:
+            - sh
+            - -c
+            - |
+              for db in grpcdb financialdb healthdb socialdb; do
+                echo "Creating database: $db"
+                PGPASSWORD="$DB_PASSWORD" psql \
+                  -h "$DB_HOST" -p 5432 -U "$DB_USERNAME" -d postgres \
+                  -c "SELECT 1 FROM pg_database WHERE datname='$db'" \
+                  | grep -q 1 \
+                  || PGPASSWORD="$DB_PASSWORD" psql \
+                       -h "$DB_HOST" -p 5432 -U "$DB_USERNAME" -d postgres \
+                       -c "CREATE DATABASE $db;"
+                echo "  $db ready"
+              done
+              echo "All databases initialized"
+          env:
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: userservice-secrets
+                  key: rds-host
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: userservice-secrets
+                  key: db-username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: userservice-secrets
+                  key: db-password

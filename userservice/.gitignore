@@ -1,0 +1,33 @@
+# Maven/Java build output
+**/target/
+*.log
+
+# Node/Frontend build output
+**/node_modules/
+**/dist/
+.npm/
+
+# Environment and local overrides
+.env
+.env.*
+!.env.example
+
+# Terraform local artifacts (keep terraform code, ignore state/cache/plans)
+terraform/.terraform/
+terraform/.terraform/providers/
+terraform/.terraform.lock.hcl
+terraform/tfplan
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/crash.log
+terraform/crash.*.log
+terraform/override.tf
+terraform/override.tf.json
+terraform/*_override.tf
+terraform/*_override.tf.json
+
+# IDE/OS noise
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

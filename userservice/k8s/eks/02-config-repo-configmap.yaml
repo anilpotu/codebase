@@ -1,0 +1,429 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-repo
+  namespace: userservice
+data:
+  application.yml: |
+    spring:
+      cloud:
+        config:
+          enabled: true
+          fail-fast: true
+          retry:
+            max-attempts: 6
+            initial-interval: 1000
+
+    eureka:
+      client:
+        service-url:
+          defaultZone: http://eureka:eureka@eureka-server:8761/eureka
+        registry-fetch-interval-seconds: 5
+      instance:
+        prefer-ip-address: true
+        lease-renewal-interval-in-seconds: 5
+        lease-expiration-duration-in-seconds: 10
+
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info,prometheus,metrics,env,loggers,circuitbreakers
+      endpoint:
+        health:
+          show-details: always
+          show-components: always
+          probes:
+            enabled: true
+        info:
+          enabled: true
+        loggers:
+          enabled: true
+      info:
+        env:
+          enabled: true
+        build:
+          enabled: true
+      health:
+        db:
+          enabled: true
+        diskspace:
+          enabled: true
+        redis:
+          enabled: true
+
+    logging:
+      level:
+        com.secure: DEBUG
+        org.springframework.security: INFO
+        org.hibernate.SQL: WARN
+        org.flywaydb: INFO
+      pattern:
+        console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] %-5level %logger{36} - %msg%n"
+
+  eureka-server.yml: |
+    server:
+      port: 8761
+
+    spring:
+      application:
+        name: eureka-server
+      security:
+        user:
+          name: eureka
+          password: "$2b$10$ZgWflqxWprlvz2ObPMXWCOdspekCZNPIqbJpTzrntMkhDdD1q9xZe"
+
+    eureka:
+      client:
+        register-with-eureka: false
+        fetch-registry: false
+      server:
+        enable-self-preservation: false
+        eviction-interval-timer-in-ms: 5000
+
+  api-gateway.yml: |
+    server:
+      port: 8000
+
+    spring:
+      application:
+        name: api-gateway
+      redis:
+        host: userservice-eks-redis.90ltcd.ng.0001.use1.cache.amazonaws.com
+        port: 6379
+      cloud:
+        gateway:
+          routes:
+            - id: auth-service
+              uri: lb://auth-service
+              predicates:
+                - Path=/api/auth/**
+              filters:
+                - StripPrefix=1
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+                - Path=/api/users/**
+              filters:
+                - StripPrefix=1
+            - id: order-service
+              uri: lb://order-service
+              predicates:
+                - Path=/api/orders/**
+              filters:
+                - StripPrefix=1
+            - id: product-service
+              uri: lb://product-service
+              predicates:
+                - Path=/api/products/**
+              filters:
+                - StripPrefix=1
+            - id: user-grpc-service-root
+              uri: lb://user-grpc-service
+              predicates:
+                - Path=/api/grpc-users
+              filters:
+                - SetPath=/api/users
+            - id: user-grpc-service
+              uri: lb://user-grpc-service
+              predicates:
+                - Path=/api/grpc-users/**
+              filters:
+                - RewritePath=/api/grpc-users/(?<remaining>.*), /api/users/${remaining}
+            - id: financial-service
+              uri: lb://financial-service
+              predicates:
+                - Path=/api/accounts/**,/api/transactions/**
+            - id: health-service
+              uri: lb://health-service
+              predicates:
+                - Path=/api/health-records/**,/api/vitals/**
+            - id: social-service
+              uri: lb://social-service
+              predicates:
+                - Path=/api/profiles/**,/api/posts/**,/api/connections/**
+            - id: auth-service-health
+              uri: lb://auth-service
+              predicates:
+                - Path=/health/auth-service
+              filters:
+                - SetPath=/actuator/health
+            - id: user-service-health
+              uri: lb://user-service
+              predicates:
+                - Path=/health/user-service
+              filters:
+                - SetPath=/actuator/health
+            - id: order-service-health
+              uri: lb://order-service
+              predicates:
+                - Path=/health/order-service
+              filters:
+                - SetPath=/actuator/health
+            - id: product-service-health
+              uri: lb://product-service
+              predicates:
+                - Path=/health/product-service
+              filters:
+                - SetPath=/actuator/health
+            - id: financial-service-health
+              uri: lb://financial-service
+              predicates:
+                - Path=/health/financial-service
+              filters:
+                - SetPath=/actuator/health
+            - id: health-service-health
+              uri: lb://health-service
+              predicates:
+                - Path=/health/health-service
+              filters:
+                - SetPath=/actuator/health
+            - id: social-service-health
+              uri: lb://social-service
+              predicates:
+                - Path=/health/social-service
+              filters:
+                - SetPath=/actuator/health
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowed-origins:
+                  - "http://localhost:3000"
+                  - "*"
+                allowed-methods:
+                  - GET
+                  - POST
+                  - PUT
+                  - PATCH
+                  - DELETE
+                  - OPTIONS
+                allowed-headers: "*"
+                allow-credentials: false
+                max-age: 3600
+
+    jwt:
+      secret: mySecretKeyForJWTTokenGenerationAndValidation12345678901234567890
+
+  auth-service.yml: |
+    server:
+      port: 8080
+
+    spring:
+      application:
+        name: auth-service
+      datasource:
+        url: jdbc:h2:mem:authdb
+        username: sa
+        password:
+        driver-class-name: org.h2.Driver
+      h2:
+        console:
+          enabled: true
+          path: /h2-console
+      jpa:
+        hibernate:
+          ddl-auto: none
+        show-sql: true
+        database-platform: org.hibernate.dialect.H2Dialect
+      flyway:
+        enabled: true
+        baseline-on-migrate: true
+
+    jwt:
+      secret: mySecretKeyForJWTTokenGenerationAndValidation12345678901234567890
+      expiration: 900000
+      refresh-expiration: 604800000
+
+  user-service.yml: |
+    server:
+      port: 8081
+
+    spring:
+      application:
+        name: user-service
+      datasource:
+        url: jdbc:h2:mem:userdb
+        username: sa
+        password:
+        driver-class-name: org.h2.Driver
+      h2:
+        console:
+          enabled: true
+          path: /h2-console
+      jpa:
+        hibernate:
+          ddl-auto: create-drop
+        show-sql: true
+      security:
+        oauth2:
+          resourceserver:
+            jwt:
+              issuer-uri: http://auth-service:8080
+
+    jwt:
+      secret: mySecretKeyForJWTTokenGenerationAndValidation12345678901234567890
+
+  order-service.yml: |
+    server:
+      port: 8082
+
+    spring:
+      application:
+        name: order-service
+      datasource:
+        url: jdbc:h2:mem:orderdb
+        username: sa
+        password:
+        driver-class-name: org.h2.Driver
+      h2:
+        console:
+          enabled: true
+          path: /h2-console
+      jpa:
+        hibernate:
+          ddl-auto: create-drop
+        show-sql: true
+
+    jwt:
+      secret: mySecretKeyForJWTTokenGenerationAndValidation12345678901234567890
+
+    feign:
+      client:
+        config:
+          default:
+            connectTimeout: 5000
+            readTimeout: 5000
+
+  product-service.yml: |
+    server:
+      port: 8083
+
+    spring:
+      application:
+        name: product-service
+      datasource:
+        url: jdbc:h2:mem:productdb
+        username: sa
+        password:
+        driver-class-name: org.h2.Driver
+      h2:
+        console:
+          enabled: true
+          path: /h2-console
+      jpa:
+        hibernate:
+          ddl-auto: create-drop
+        show-sql: true
+      redis:
+        host: userservice-eks-redis.90ltcd.ng.0001.use1.cache.amazonaws.com
+        port: 6379
+      cache:
+        type: redis
+
+    jwt:
+      secret: mySecretKeyForJWTTokenGenerationAndValidation12345678901234567890
+
+  financial-service.yml: |
+    server:
+      port: 8084
+
+    spring:
+      application:
+        name: financial-service
+      datasource:
+        url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/financialdb
+        username: ${DB_USERNAME:postgres}
+        password: ${DB_PASSWORD:postgres}
+        driver-class-name: org.postgresql.Driver
+      jpa:
+        hibernate:
+          ddl-auto: validate
+        properties:
+          hibernate:
+            dialect: org.hibernate.dialect.PostgreSQLDialect
+      flyway:
+        enabled: true
+
+    jwt:
+      secret: ${JWT_SECRET:enterpriseGrpcSecretKeyForJWT256bitMinimumLength!}
+      expiration: 86400000
+
+  health-service.yml: |
+    server:
+      port: 8085
+
+    spring:
+      application:
+        name: health-service
+      datasource:
+        url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/healthdb
+        username: ${DB_USERNAME:postgres}
+        password: ${DB_PASSWORD:postgres}
+        driver-class-name: org.postgresql.Driver
+      jpa:
+        hibernate:
+          ddl-auto: update
+        show-sql: false
+        database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+    jwt:
+      secret: ${JWT_SECRET:mySecretKeyForJWTTokenGenerationAndValidation12345678901234567890}
+      expiration: 86400000
+
+  social-service.yml: |
+    server:
+      port: 8086
+
+    spring:
+      application:
+        name: social-service
+      datasource:
+        url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/socialdb
+        username: ${DB_USERNAME:postgres}
+        password: ${DB_PASSWORD:postgres}
+        driver-class-name: org.postgresql.Driver
+      jpa:
+        hibernate:
+          ddl-auto: update
+        show-sql: false
+        database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+    jwt:
+      secret: ${JWT_SECRET:mySecretKeyForJWTTokenGenerationAndValidation12345678901234567890}
+      expiration: 86400000
+
+  user-grpc-service.yml: |
+    server:
+      port: 8090
+
+    spring:
+      application:
+        name: user-grpc-service
+      datasource:
+        url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/grpcdb
+        username: ${DB_USERNAME:postgres}
+        password: ${DB_PASSWORD:postgres}
+        driver-class-name: org.postgresql.Driver
+      jpa:
+        hibernate:
+          ddl-auto: update
+        show-sql: false
+        database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+    grpc:
+      server:
+        port: 9090
+
+    jwt:
+      secret: ${JWT_SECRET:mySecretKeyForJWTTokenGenerationAndValidation12345678901234567890}
+      expiration: 86400000
+
+  application-dev.yml: |
+    logging:
+      level:
+        root: INFO
+
+  application-prod.yml: |
+    logging:
+      level:
+        root: WARN

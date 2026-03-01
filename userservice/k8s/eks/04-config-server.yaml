@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-server
+  namespace: userservice
+  labels:
+    app: config-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-server
+  template:
+    metadata:
+      labels:
+        app: config-server
+    spec:
+      containers:
+        - name: config-server
+          image: 932888576933.dkr.ecr.us-east-1.amazonaws.com/userservice/config-server:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8888
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "native"
+            - name: CONFIG_REPO_PATH
+              value: "file:///config-repo"
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Xmx200m -Xms64m"
+          volumeMounts:
+            - name: config-repo
+              mountPath: /config-repo
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8888
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8888
+            initialDelaySeconds: 180
+            periodSeconds: 15
+            failureThreshold: 10
+      volumes:
+        - name: config-repo
+          configMap:
+            name: config-repo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-server
+  namespace: userservice
+  labels:
+    app: config-server
+spec:
+  selector:
+    app: config-server
+  ports:
+    - port: 8888
+      targetPort: 8888
