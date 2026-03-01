@@ -28,21 +28,11 @@ function RequireAuth() {
   return <Outlet />;
 }
 
-function RedirectIfAuthenticated() {
-  const hasToken = Boolean(localStorage.getItem(TOKEN_KEY));
-
-  if (hasToken) {
-    return <Navigate to="/" replace />;
-  }
-
-  return <AuthPage />;
-}
-
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
-        <Route path="auth" element={<RedirectIfAuthenticated />} />
+        <Route path="auth" element={<AuthPage />} />
 
         <Route element={<RequireAuth />}>
           <Route index element={<Dashboard />} />

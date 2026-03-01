@@ -4,7 +4,7 @@
 # Usage: ./scripts/05-helm-deploy.sh <project> <env> [image-tag] [action]
 #
 # Arguments:
-#   project     "grpc" | "sds" | "all"
+#   project     "grpc" | "sds" | "us" | "all"
 #   env         "dev" | "staging" | "prod"
 #   image-tag   Docker image tag (default: latest)
 #   action      "install" | "upgrade" | "diff" (default: upgrade --install)
@@ -12,6 +12,7 @@
 # Examples:
 #   ./scripts/05-helm-deploy.sh grpc dev
 #   ./scripts/05-helm-deploy.sh sds prod build-42 upgrade
+#   ./scripts/05-helm-deploy.sh us prod build-42 upgrade
 #   ./scripts/05-helm-deploy.sh all staging latest
 # =============================================================================
 set -euo pipefail

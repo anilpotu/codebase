@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(terraform version)",
+      "Bash(minikube status)",
+      "Bash(minikube start --driver=docker --memory=4096 --cpus=4 --disk-size=20g)",
+      "Bash(minikube delete --all)",
+      "Bash(minikube start --driver=docker --memory=4096 --cpus=4 --disk-size=20g --kubernetes-version=v1.28.3 --extra-config=kubelet.cgroup-driver=systemd)",
+      "Bash(for f in 07-auth-service.yaml 08-user-service.yaml 09-order-service.yaml 10-product-service.yaml 11-api-gateway.yaml 12-user-grpc-service.yaml 13-financial-service.yaml 14-health-service.yaml 15-social-service.yaml 16-enterprise-ui.yaml)",
+      "Bash(do kubectl apply -f userservice/k8s/$f)",
+      "Bash(echo \"Applied $f\")",
+      "Bash(kubectl get pods -n userservice)",
+      "Bash(for f in /c/Users/anil_/Downloads/security/userservice/k8s/*.yaml)",
+      "Bash(do grep -l \"userservice-\" \"$f\")",
+      "Bash(powershell -Command \"Get-Process ''Docker Desktop'' -ErrorAction SilentlyContinue | Select-Object Name,Id,StartTime\")",
+      "Bash(powershell -Command \"Get-Process -Name ''Docker Desktop'' -ErrorAction SilentlyContinue | Select-Object Name,Id\")",
+      "Bash(powershell -Command \"Get-Process | Where-Object {$_Name -like ''*Docker*''} | Select-Object Name,Id\")",
+      "Bash(tasklist)",
+      "Bash(minikube start --driver=docker --memory=4096 --cpus=4 --disk-size=25g --kubernetes-version=v1.28.3 --extra-config=kubelet.cgroup-driver=systemd)",
+      "Bash(minikube docker-env --shell bash)",
+      "Bash(echo \"DONE: $svc\")",
+      "Bash(__NEW_LINE_dc64d5aa35c2241c__ echo \"=== Building enterprise-ui ===\")",
+      "Bash(docker build -t \"userservice-enterprise-ui:latest\" -f \"enterprise-ui/Dockerfile\" enterprise-ui/)",
+      "Bash(unset DOCKER_TLS_VERIFY DOCKER_HOST DOCKER_CERT_PATH MINIKUBE_ACTIVE_DOCKERD)",
+      "Bash(kubectl get nodes)",
+      "Bash(for f in 07 08 09 10 11 12 13 14 15 16)",
+      "Bash(do)",
+      "Bash(kubectl apply -f userservice/k8s/$f-*.yaml)",
+      "Bash(kubectl rollout status statefulset/postgres -n userservice --timeout=120s)",
+      "Bash(kubectl rollout status deployment/redis -n userservice --timeout=60s)",
+      "Bash(kubectl rollout status deployment/config-server -n userservice --timeout=300s)",
+      "Bash(kubectl rollout status deployment/eureka-server -n userservice --timeout=300s)",
+      "Bash(for svc in auth-service user-service order-service product-service api-gateway user-grpc-service financial-service health-service social-service enterprise-ui)",
+      "Bash(echo -n \"Waiting for $svc... \")",
+      "Bash(kubectl rollout status deployment/$svc -n userservice --timeout=300s)"
+    ]
+  }
+}

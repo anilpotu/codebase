@@ -18,7 +18,7 @@ spec:
       containers:
         - name: config-server
           image: userservice-config-server:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Never
           ports:
             - containerPort: 8888
           env:
@@ -27,16 +27,16 @@ spec:
             - name: CONFIG_REPO_PATH
               value: "file:///config-repo"
             - name: JAVA_TOOL_OPTIONS
-              value: "-Xmx300m -Xms128m"
+              value: "-Xmx200m -Xms64m"
           volumeMounts:
             - name: config-repo
               mountPath: /config-repo
           resources:
             requests:
-              memory: "256Mi"
+              memory: "128Mi"
               cpu: "100m"
             limits:
-              memory: "512Mi"
+              memory: "350Mi"
               cpu: "500m"
           readinessProbe:
             httpGet:
@@ -49,9 +49,9 @@ spec:
             httpGet:
               path: /actuator/health
               port: 8888
-            initialDelaySeconds: 60
+            initialDelaySeconds: 180
             periodSeconds: 15
-            failureThreshold: 5
+            failureThreshold: 10
       volumes:
         - name: config-repo
           configMap:

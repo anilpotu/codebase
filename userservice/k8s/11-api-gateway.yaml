@@ -25,7 +25,7 @@ spec:
       containers:
         - name: api-gateway
           image: userservice-api-gateway:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Never
           ports:
             - containerPort: 8000
           env:
@@ -46,28 +46,28 @@ spec:
             - name: SPRING_MAIN_WEB_APPLICATION_TYPE
               value: "reactive"
             - name: JAVA_TOOL_OPTIONS
-              value: "-Xmx350m -Xms128m"
+              value: "-Xmx200m -Xms64m"
           resources:
             requests:
-              memory: "256Mi"
+              memory: "128Mi"
               cpu: "100m"
             limits:
-              memory: "512Mi"
+              memory: "350Mi"
               cpu: "500m"
           readinessProbe:
             httpGet:
               path: /actuator/health
               port: 8000
-            initialDelaySeconds: 90
+            initialDelaySeconds: 180
             periodSeconds: 10
             failureThreshold: 15
           livenessProbe:
             httpGet:
               path: /actuator/health
               port: 8000
-            initialDelaySeconds: 120
+            initialDelaySeconds: 180
             periodSeconds: 15
-            failureThreshold: 5
+            failureThreshold: 10
 ---
 apiVersion: v1
 kind: Service

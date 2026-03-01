@@ -22,7 +22,7 @@ spec:
       containers:
         - name: auth-service
           image: userservice-auth-service:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Never
           ports:
             - containerPort: 8080
           env:
@@ -37,28 +37,28 @@ spec:
             - name: EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE
               value: "http://eureka:eureka@eureka-server:8761/eureka"
             - name: JAVA_TOOL_OPTIONS
-              value: "-Xmx350m -Xms128m"
+              value: "-Xmx200m -Xms64m"
           resources:
             requests:
-              memory: "256Mi"
+              memory: "128Mi"
               cpu: "100m"
             limits:
-              memory: "512Mi"
+              memory: "350Mi"
               cpu: "500m"
           readinessProbe:
             httpGet:
               path: /actuator/health
               port: 8080
-            initialDelaySeconds: 60
+            initialDelaySeconds: 180
             periodSeconds: 10
             failureThreshold: 12
           livenessProbe:
             httpGet:
               path: /actuator/health
               port: 8080
-            initialDelaySeconds: 90
+            initialDelaySeconds: 180
             periodSeconds: 15
-            failureThreshold: 5
+            failureThreshold: 10
 ---
 apiVersion: v1
 kind: Service

@@ -4,11 +4,12 @@
 # Usage: ./scripts/teardown.sh <project> [--destroy-infra]
 #
 # Arguments:
-#   project          "grpc" | "sds" | "all"
+#   project          "grpc" | "sds" | "us" | "all"
 #   --destroy-infra  Also run terraform destroy (DESTRUCTIVE, requires confirmation)
 #
 # Examples:
 #   ./scripts/teardown.sh grpc
+#   ./scripts/teardown.sh us
 #   ./scripts/teardown.sh all --destroy-infra
 # =============================================================================
 set -euo pipefail

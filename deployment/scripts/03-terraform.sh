@@ -4,18 +4,19 @@
 # Usage: ./scripts/03-terraform.sh <project> <action> [env]
 #
 # Arguments:
-#   project   "grpc" | "sds" | "all"
+#   project   "grpc" | "sds" | "us" | "all"
 #   action    "init" | "plan" | "apply" | "destroy"
 #   env       Environment name for tagging (default: production)
 #
 # Examples:
 #   ./scripts/03-terraform.sh grpc init
 #   ./scripts/03-terraform.sh sds plan
+#   ./scripts/03-terraform.sh us apply production
 #   ./scripts/03-terraform.sh all apply production
 # =============================================================================
 set -euo pipefail
 
-PROJECT="${1:?Usage: $0 <grpc|sds|all> <init|plan|apply|destroy> [env]}"
+PROJECT="${1:?Usage: $0 <grpc|sds|us|all> <init|plan|apply|destroy> [env]}"
 ACTION="${2:?Usage: $0 <project> <init|plan|apply|destroy> [env]}"
 ENV="${3:-production}"
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -94,12 +95,16 @@ case "$PROJECT" in
   sds)
     run_terraform "secure-distributed-system" "$REPO_ROOT/secure-distributed-system/terraform"
     ;;
+  us)
+    run_terraform "userservice" "$REPO_ROOT/userservice/terraform"
+    ;;
   all)
     run_terraform "grpc-enterprise-v3" "$REPO_ROOT/grpc-enterprise-v3/terraform"
     run_terraform "secure-distributed-system" "$REPO_ROOT/secure-distributed-system/terraform"
+    run_terraform "userservice" "$REPO_ROOT/userservice/terraform"
     ;;
   *)
-    fail "Unknown project '$PROJECT'. Use: grpc | sds | all"
+    fail "Unknown project '$PROJECT'. Use: grpc | sds | us | all"
     ;;
 esac
 

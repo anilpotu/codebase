@@ -4,7 +4,7 @@
 # Usage: ./scripts/06-verify.sh [project]
 #
 # Arguments:
-#   project   "grpc" | "sds" | "all" (default: all)
+#   project   "grpc" | "sds" | "us" | "all" (default: all)
 # =============================================================================
 set -euo pipefail
 
